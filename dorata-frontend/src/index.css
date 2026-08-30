@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background: #fff8ed;
+}
+
+body {
+  @apply text-ink font-body;
+  -webkit-font-smoothing: antialiased;
+}
+
+.label-font {
+  font-family: "Arial Black", Arial, sans-serif;
+  letter-spacing: 0.08em;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ede4d3;
+  border-radius: 8px;
+}
+
+/* respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

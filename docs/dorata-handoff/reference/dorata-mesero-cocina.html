@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dorata — Mesero &amp; Cocina</title>
+<style>
+  :root{
+    --charcoal:#1C1B1A; --cream:#FFF8ED; --paper:#FFFDF8; --flame:#FF5A1F;
+    --yolk:#FFC93C; --chile:#D62828; --ink:#2A2622; --mute:#9A9187; --line:#EDE4D3; --green:#3F7D4E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{ background:#EFE9DD; font-family:Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  .display{ font-family:'Arial Black', Arial, sans-serif; letter-spacing:-0.02em; }
+  .label{ font-family:'Arial Black', Arial, sans-serif; letter-spacing:0.08em; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; padding:0; color:inherit; }
+  input{ font-family:inherit; }
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
+
+  /* ---- top mode switcher ---- */
+  .mode-bar{ position:sticky; top:0; z-index:40; display:flex; justify-content:center; padding:14px 12px; background:#EFE9DD; }
+  .mode-pill{ display:flex; gap:4px; padding:4px; border-radius:999px; background:var(--paper); border:1.5px solid var(--line); }
+  .mode-btn{ display:flex; align-items:center; gap:8px; padding:9px 18px; border-radius:999px; font-size:12px; font-weight:800; color:var(--mute); }
+  .mode-btn.active{ background:var(--charcoal); color:var(--cream); }
+
+  #app{ max-width:1400px; margin:0 auto; padding:0 16px 40px; }
+
+  .svg{ display:block; flex-shrink:0; }
+  .round-btn{ width:26px; height:26px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:var(--cream); border:1px solid var(--line); }
+  .round-btn.dark{ background:var(--charcoal); border-color:var(--charcoal); }
+  .chip{ padding:8px 16px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; background:var(--paper); color:var(--ink); border:1.5px solid var(--line); transition:all .15s; }
+  .chip.active{ background:var(--charcoal); color:var(--cream); border-color:var(--charcoal); }
+  .badge{ padding:5px 10px; border-radius:999px; font-size:10px; }
+  .avatar{ border-radius:999px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--cream); font-weight:800; }
+
+  /* ---- panel shell for waiter/kitchen "tablet" look ---- */
+  .panel{ background:var(--cream); border-radius:24px; border:1.5px solid var(--line); min-height:78vh; overflow:hidden; box-shadow:0 20px 50px rgba(28,27,26,0.08); }
+  .panel.dark{ background:var(--charcoal); border-color:var(--charcoal); }
+
+  /* ===== WAITER HOME ===== */
+  .home-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px 24px 14px; flex-wrap:wrap; }
+  .home-eyebrow{ font-size:11px; color:var(--flame); }
+  .home-title{ font-size:26px; color:var(--charcoal); margin-top:2px; }
+  .tabs-pill{ display:flex; gap:4px; padding:4px; border-radius:999px; background:var(--paper); border:1px solid var(--line); }
+  .tab-btn{ display:flex; align-items:center; gap:7px; padding:9px 14px; border-radius:999px; font-size:12px; font-weight:800; color:var(--mute); position:relative; }
+  .tab-btn.active{ background:var(--charcoal); color:var(--cream); }
+  .tab-count{ background:var(--flame); color:var(--cream); font-size:9px; font-weight:900; width:16px; height:16px; border-radius:999px; display:flex; align-items:center; justify-content:center; }
+
+  .table-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:6px 24px 26px; }
+  @media(min-width:560px){ .table-grid{ grid-template-columns:repeat(3,1fr); } }
+  @media(min-width:860px){ .table-grid{ grid-template-columns:repeat(4,1fr); } }
+  @media(min-width:1180px){ .table-grid{ grid-template-columns:repeat(5,1fr); } }
+  .table-card{ text-align:left; background:var(--paper); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px; transition:transform .12s; }
+  .table-card:hover{ transform:translateY(-2px); }
+  .table-top{ display:flex; align-items:center; justify-content:space-between; }
+  .table-name{ font-size:17px; color:var(--charcoal); }
+  .table-seats{ display:flex; align-items:center; gap:4px; color:var(--mute); font-size:11px; font-weight:700; }
+  .table-total{ font-size:14px; font-weight:800; color:var(--charcoal); }
+  .table-hint{ font-size:10px; font-weight:800; color:var(--green); }
+
+  .takeout-actions{ padding:6px 24px 0; }
+  .new-takeout-btn{ width:100%; padding:14px; border-radius:16px; background:var(--charcoal); display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px; }
+  .section-label{ font-size:10px; color:var(--flame); padding:0 24px; margin-bottom:8px; }
+  .section-label.muted{ color:var(--mute); }
+  .takeout-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:0 24px 22px; }
+  @media(min-width:640px){ .takeout-grid{ grid-template-columns:repeat(3,1fr);} }
+  @media(min-width:1000px){ .takeout-grid{ grid-template-columns:repeat(4,1fr);} }
+  .takeout-card{ text-align:left; background:var(--paper); border-radius:18px; padding:15px; display:flex; flex-direction:column; gap:6px; }
+  .empty-hint{ padding:20px 24px; font-size:12px; color:var(--mute); text-align:center; }
+
+  /* ===== ORDER BUILD ===== */
+  .build-header{ display:flex; align-items:center; gap:12px; padding:18px 22px 10px; }
+  .build-layout{ display:flex; flex-direction:column; height:calc(78vh - 56px); }
+  @media(min-width:860px){ .build-layout{ flex-direction:row; } }
+  .build-products{ display:flex; flex-direction:column; flex:1.5; min-height:0; }
+  @media(min-width:860px){ .build-products{ border-right:1.5px solid var(--line); } }
+  .build-cats{ display:flex; gap:8px; padding:0 22px 12px; overflow-x:auto; }
+  .product-grid{ flex:1; overflow-y:auto; padding:0 22px 20px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media(min-width:640px){ .product-grid{ grid-template-columns:repeat(4,1fr);} }
+  @media(min-width:1100px){ .product-grid{ grid-template-columns:repeat(5,1fr);} }
+  .prod-btn{ background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; transition:transform .1s; }
+  .prod-btn:hover{ transform:scale(0.97); }
+  .prod-emoji{ width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--cream); display:flex; align-items:center; justify-content:center; font-size:24px; }
+  .prod-name{ font-size:11px; font-weight:800; color:var(--charcoal); line-height:1.2; }
+  .prod-price{ font-size:11px; font-weight:800; color:var(--flame); }
+
+  .build-order{ display:flex; flex-direction:column; flex:1; min-height:0; }
+  .order-list-title{ padding:16px 18px 6px; font-size:11px; color:var(--charcoal); }
+  .order-list{ flex:1; overflow-y:auto; padding:0 18px; }
+  .order-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .order-row-info{ flex:1; min-width:0; }
+  .order-row-name{ font-size:12px; font-weight:800; color:var(--charcoal); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .order-row-price{ font-size:10px; color:var(--mute); }
+  .order-qty{ display:flex; align-items:center; gap:6px; }
+  .order-qty span{ font-size:11px; width:14px; text-align:center; font-weight:800; color:var(--charcoal); }
+  .empty-order{ font-size:12px; color:var(--mute); text-align:center; margin-top:24px; }
+  .order-footer{ padding:14px 18px 18px; border-top:1.5px solid var(--line); }
+  .order-total-row{ display:flex; justify-content:space-between; font-size:14px; font-weight:800; color:var(--charcoal); margin-bottom:10px; }
+  .btn-send{ width:100%; padding:12px; border-radius:14px; background:var(--charcoal); display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; }
+  .btn-bill{ width:100%; padding:12px; border-radius:14px; background:var(--flame); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-bill:disabled{ background:var(--line); }
+
+  /* ===== BILL SCREEN ===== */
+  .bill-layout{ display:flex; flex-direction:column; }
+  @media(min-width:860px){ .bill-layout{ flex-direction:row; height:78vh; } }
+  .bill-items{ flex:1; padding:18px 24px; overflow-y:auto; }
+  .bill-row{ display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px solid var(--line); color:var(--ink); }
+  .bill-side{ width:100%; padding:20px 22px; display:flex; flex-direction:column; justify-content:space-between; gap:20px; }
+  @media(min-width:860px){ .bill-side{ width:300px; border-left:1.5px solid var(--line); } }
+  .tip-row, .pay-row{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .pay-icon-btn{ flex:1; padding:12px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:var(--paper); border:1px solid var(--line); min-width:50px; }
+  .pay-icon-btn.active{ background:var(--charcoal); border-color:var(--charcoal); }
+  .split-row{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .bill-final-row{ display:flex; justify-content:space-between; font-size:12px; color:var(--mute); }
+  .bill-total-row{ display:flex; justify-content:space-between; font-size:19px; font-weight:900; color:var(--charcoal); margin:8px 0 14px; }
+  .btn-charge{ width:100%; padding:15px; border-radius:14px; background:var(--flame); text-align:center; }
+
+  /* ===== full-screen confirmation states ===== */
+  .center-screen{ height:78vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:40px; text-align:center; }
+  .check-circle{ width:76px; height:76px; border-radius:999px; background:var(--green); display:flex; align-items:center; justify-content:center; }
+  .big-number{ font-size:52px; color:var(--charcoal); }
+
+  /* ===== new takeout modal ===== */
+  .overlay{ position:fixed; inset:0; background:rgba(28,27,26,0.55); z-index:60; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; padding:16px; }
+  .overlay.open{ opacity:1; pointer-events:auto; }
+  .modal-card{ width:100%; max-width:340px; background:var(--paper); border-radius:20px; padding:20px; }
+  .modal-input{ width:100%; margin:6px 0 16px; padding:11px 12px; border-radius:12px; font-size:13px; background:var(--cream); border:1.5px solid var(--line); color:var(--ink); outline:none; }
+  .modal-actions{ display:flex; gap:8px; }
+  .modal-btn{ flex:1; padding:11px; border-radius:12px; text-align:center; font-size:12px; font-weight:800; }
+
+  /* ===== KITCHEN ===== */
+  .kitchen-header{ display:flex; align-items:center; justify-content:space-between; padding:20px 24px 12px; }
+  .kitchen-title-block{ display:flex; align-items:center; gap:10px; }
+  .kitchen-title{ font-size:24px; color:var(--cream); }
+  .kitchen-count{ font-size:12px; font-weight:700; color:var(--mute); }
+  .kitchen-body{ display:flex; flex-direction:column; gap:16px; padding:0 24px 24px; height:calc(78vh - 68px); }
+  @media(min-width:860px){ .kitchen-body{ flex-direction:row; } }
+  .kitchen-pending{ flex:1; overflow-y:auto; padding-right:4px; min-height:0; }
+  .kitchen-pending-label{ font-size:10px; color:var(--yolk); margin-bottom:10px; }
+  .kitchen-empty{ font-size:12px; color:var(--mute); margin-top:12px; }
+  .ticket-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  @media(min-width:640px){ .ticket-grid{ grid-template-columns:repeat(3,1fr);} }
+  @media(min-width:1180px){ .ticket-grid{ grid-template-columns:repeat(4,1fr);} }
+  .ticket-card{ background:var(--paper); border-radius:16px; padding:14px; }
+  .ticket-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .ticket-order-badge{ width:20px; height:20px; border-radius:999px; background:var(--flame); color:var(--cream); font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .ticket-label{ font-size:12px; color:var(--charcoal); }
+  .ticket-time{ font-size:9px; font-weight:700; color:var(--mute); }
+  .ticket-items{ display:flex; flex-direction:column; gap:2px; margin-bottom:10px; }
+  .ticket-item{ font-size:12px; color:var(--ink); }
+  .btn-ready{ width:100%; padding:9px; border-radius:10px; background:var(--green); display:flex; align-items:center; justify-content:center; gap:6px; }
+
+  .kitchen-done{ width:100%; overflow-y:auto; min-height:0; padding-top:16px; border-top:1px solid rgba(255,255,255,0.12); }
+  @media(min-width:860px){ .kitchen-done{ width:230px; padding-top:0; padding-left:18px; border-top:none; border-left:1px solid rgba(255,255,255,0.12); } }
+  .kitchen-done-label{ font-size:10px; color:var(--green); margin-bottom:10px; }
+  .done-item{ width:100%; text-align:left; border-radius:14px; padding:11px; background:rgba(255,255,255,0.06); margin-bottom:8px; }
+  .done-item-top{ display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+  .done-item-label{ font-size:12px; font-weight:800; color:var(--cream); }
+  .done-item-sub{ font-size:10px; color:var(--mute); }
+</style>
+</head>
+<body>
+
+<div class="mode-bar">
+  <div class="mode-pill" id="modePill">
+    <button class="mode-btn" data-mode="mesero">
+      <svg class="svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/></svg>
+      Vista Mesero
+    </button>
+    <button class="mode-btn" data-mode="cocina">
+      <svg class="svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>
+      Vista Cocina
+    </button>
+  </div>
+</div>
+
+<div id="app"></div>
+
+<div class="overlay" id="takeoutOverlay">
+  <div class="modal-card">
+    <div class="display" style="font-size:14px;color:var(--charcoal);margin-bottom:4px;">NUEVA ORDEN PARA LLEVAR</div>
+    <label class="label" style="font-size:10px;color:var(--mute);">NOMBRE DEL CLIENTE</label>
+    <input class="modal-input" id="takeoutNameInput" placeholder="Ej. Carlos R." autocomplete="off">
+    <div class="modal-actions">
+      <button class="modal-btn" id="takeoutCancelBtn" style="background:var(--cream);border:1px solid var(--line);color:var(--charcoal);">Cancelar</button>
+      <button class="modal-btn" id="takeoutCreateBtn" style="background:var(--flame);color:var(--cream);">Crear orden</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const C = { charcoal:"#1C1B1A", cream:"#FFF8ED", paper:"#FFFDF8", flame:"#FF5A1F", yolk:"#FFC93C", chile:"#D62828", mute:"#9A9187", line:"#EDE4D3", green:"#3F7D4E" };
+const money = n => `$${n.toFixed(2)}`;
+
+const CATEGORIES = ["Combos","Hamburguesas","Papas","Bebidas","Postres"];
+const PRODUCTS = [
+  { id:"c1", cat:"Combos", name:"Combo Clásico", price:8.5, emoji:"🍔" },
+  { id:"c2", cat:"Combos", name:"Combo Doble Fuego", price:10.9, emoji:"🔥" },
+  { id:"h1", cat:"Hamburguesas", name:"Fuego Classic", price:5.5, emoji:"🍔" },
+  { id:"h2", cat:"Hamburguesas", name:"Doble Queso", price:6.9, emoji:"🧀" },
+  { id:"h3", cat:"Hamburguesas", name:"Picante Jalapeño", price:6.5, emoji:"🌶️" },
+  { id:"p1", cat:"Papas", name:"Papas Clásicas", price:2.5, emoji:"🍟" },
+  { id:"p2", cat:"Papas", name:"Papas con Queso", price:3.9, emoji:"🧀" },
+  { id:"p3", cat:"Papas", name:"Aros de Cebolla", price:3.2, emoji:"🧅" },
+  { id:"b1", cat:"Bebidas", name:"Refresco", price:1.8, emoji:"🥤" },
+  { id:"b2", cat:"Bebidas", name:"Malteada Chocolate", price:3.5, emoji:"🥤" },
+  { id:"d1", cat:"Postres", name:"Volcán de Chocolate", price:3.0, emoji:"🍫" },
+  { id:"d2", cat:"Postres", name:"Helado Suave", price:2.2, emoji:"🍦" },
+];
+const GUESTS = { tu:{name:"Tú",initials:"TÚ",color:C.flame}, ana:{name:"Ana",initials:"AN",color:C.chile}, mesero:{name:"Mesero",initials:"M",color:C.charcoal} };
+
+const STATUS_META = {
+  libre:{ label:"Libre", color:C.mute, bg:C.paper },
+  pidiendo:{ label:"Pidiendo", color:C.charcoal, bg:C.yolk },
+  cocina:{ label:"En cocina", color:C.cream, bg:C.flame },
+  comiendo:{ label:"Comiendo", color:C.cream, bg:C.green },
+};
+
+// ---------- mutable "backend" state ----------
+let tables = [
+  { id:1, label:"Mesa 1", seats:2, status:"libre", paidAt:null },
+  { id:2, label:"Mesa 2", seats:4, status:"libre", paidAt:null },
+  { id:3, label:"Mesa 3", seats:4, status:"pidiendo", paidAt:null },
+  { id:4, label:"Mesa 4", seats:6, status:"cocina", paidAt:null },
+  { id:5, label:"Mesa 5", seats:4, status:"pidiendo", paidAt:null },
+  { id:6, label:"Mesa 6", seats:2, status:"libre", paidAt:null },
+  { id:7, label:"Mesa 7", seats:4, status:"comiendo", paidAt: Date.now() - 6*60000 },
+  { id:8, label:"Mesa 8", seats:4, status:"libre", paidAt:null },
+];
+let orders = {
+  3: [{ id:"i1", productId:"b1", name:"Refresco", price:1.8, qty:2, addedBy:"mesero", sent:true }],
+  4: [
+    { id:"i2", productId:"h2", name:"Doble Queso", price:6.9, qty:2, addedBy:"mesero", sent:true },
+    { id:"i3", productId:"p1", name:"Papas Clásicas", price:2.5, qty:2, addedBy:"mesero", sent:true },
+  ],
+  5: [
+    { id:"i4", productId:"h1", name:"Fuego Classic", price:5.5, qty:1, addedBy:"ana", sent:true },
+    { id:"i5", productId:"p2", name:"Papas con Queso", price:3.9, qty:1, addedBy:"ana", sent:true },
+    { id:"i6", productId:"b2", name:"Malteada Chocolate", price:3.5, qty:1, addedBy:"mesero", sent:false },
+  ],
+  7: [{ id:"i7", productId:"c2", name:"Combo Doble Fuego", price:10.9, qty:3, addedBy:"mesero", sent:true }],
+};
+let takeoutOrders = [
+  { id:"t1", name:"Carlos R.", paid:true, orderNumber:40, paidAt: Date.now() - 3*60000,
+    items:[
+      { id:"ti1", productId:"h3", name:"Picante Jalapeño", price:6.5, qty:1, sent:true },
+      { id:"ti2", productId:"b1", name:"Refresco", price:1.8, qty:1, sent:true },
+    ] },
+];
+let nextOrderNumber = 41;
+let kitchenReady = {};
+
+function lineTotal(item){ return item.price * item.qty; }
+function orderTotal(order){ return order.reduce((s,i)=>s+lineTotal(i),0); }
+function elapsedLabel(ts){
+  const mins = Math.floor((Date.now()-ts)/60000);
+  if(mins<1) return "Justo ahora";
+  return `Hace ${mins} min`;
+}
+function uid(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,6)}`; }
+
+// ---------- domain actions ----------
+function addItem(tableId, product, addedBy="mesero"){
+  const list = orders[tableId] || [];
+  const existing = list.find(i=>i.productId===product.id && !i.sent && i.addedBy===addedBy);
+  orders[tableId] = existing
+    ? list.map(i=> i.id===existing.id ? {...i, qty:i.qty+1} : i)
+    : [...list, { id:uid(product.id), productId:product.id, name:product.name, price:product.price, qty:1, addedBy, sent:false }];
+  const t = tables.find(t=>t.id===tableId);
+  if(t && t.status==="libre") t.status="pidiendo";
+}
+function changeQty(tableId, itemId, delta){
+  orders[tableId] = (orders[tableId]||[]).map(i=> i.id===itemId ? {...i, qty:i.qty+delta} : i).filter(i=>i.qty>0);
+}
+function removeItem(tableId, itemId){
+  orders[tableId] = (orders[tableId]||[]).filter(i=>i.id!==itemId);
+}
+function sendToKitchen(tableId){
+  orders[tableId] = (orders[tableId]||[]).map(i=>({...i, sent:true}));
+  const t = tables.find(t=>t.id===tableId); if(t) t.status="cocina";
+}
+function markTablePaid(tableId){
+  const t = tables.find(t=>t.id===tableId); if(t){ t.status="comiendo"; t.paidAt=Date.now(); }
+}
+function releaseTable(tableId){
+  orders[tableId]=[];
+  const t = tables.find(t=>t.id===tableId); if(t){ t.status="libre"; t.paidAt=null; }
+  delete kitchenReady[`mesa-${tableId}`];
+}
+function createTakeout(name){
+  const id = uid("to");
+  takeoutOrders.push({ id, name, items:[], paid:false, orderNumber:null, paidAt:null });
+  return id;
+}
+function addTakeoutItem(id, product){
+  const o = takeoutOrders.find(o=>o.id===id); if(!o) return;
+  const existing = o.items.find(i=>i.productId===product.id && !i.sent);
+  o.items = existing
+    ? o.items.map(i=> i.id===existing.id ? {...i, qty:i.qty+1} : i)
+    : [...o.items, { id:uid(product.id), productId:product.id, name:product.name, price:product.price, qty:1, sent:false }];
+}
+function changeTakeoutQty(id, itemId, delta){
+  const o = takeoutOrders.find(o=>o.id===id); if(!o) return;
+  o.items = o.items.map(i=> i.id===itemId ? {...i, qty:i.qty+delta} : i).filter(i=>i.qty>0);
+}
+function removeTakeoutItem(id, itemId){
+  const o = takeoutOrders.find(o=>o.id===id); if(!o) return;
+  o.items = o.items.filter(i=>i.id!==itemId);
+}
+function sendTakeoutToKitchen(id){
+  const o = takeoutOrders.find(o=>o.id===id); if(!o) return;
+  o.items = o.items.map(i=>({...i, sent:true}));
+}
+function chargeTakeout(id){
+  const num = nextOrderNumber; nextOrderNumber += 1;
+  const o = takeoutOrders.find(o=>o.id===id); if(o){ o.paid=true; o.orderNumber=num; o.paidAt=Date.now(); }
+  return num;
+}
+function toggleKitchenReady(key){ kitchenReady[key] = !kitchenReady[key]; }
+
+// ---------- icons ----------
+function icon(name, color, size=16){
+  const s=size;
+  const p = {
+    chevronLeft:`<path d="m15 18-6-6 6-6"/>`, x:`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`,
+    plus:`<path d="M12 5v14"/><path d="M5 12h14"/>`, minus:`<path d="M5 12h14"/>`,
+    check:`<path d="M20 6 9 17l-5-5"/>`, send:`<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>`,
+    receipt:`<path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 2Z"/><path d="M8 7h8M8 11h8M8 15h5"/>`,
+    users:`<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+    bag:`<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>`,
+    card:`<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>`,
+    cash:`<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>`,
+    wallet:`<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>`,
+    utensils:`<path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>`,
+    chef:`<path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/>`,
+  };
+  return `<svg class="svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p[name]||""}</svg>`;
+}
+function avatarHtml(g, size=20){
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${g.color};font-size:${size*0.4}px;">${g.initials}</div>`;
+}
+
+// ---------- waiter local UI state ----------
+let mode = "mesero";
+let waiter = {
+  screen:"home", homeTab:"mesas", tableId:null, takeoutId:null, assignedNumber:null,
+  buildCat:"Combos", tipPct:10, split:1, payment:"card",
+};
+
+function setMode(m){ mode=m; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===m)); render(); }
+document.getElementById('modePill').addEventListener('click', e=>{
+  const btn = e.target.closest('.mode-btn'); if(btn) setMode(btn.dataset.mode);
+});
+
+function goHome(){ waiter.screen="home"; render(); }
+
+// ---------- WAITER: HOME ----------
+function renderWaiterHome(){
+  const pendingTakeout = takeoutOrders.filter(o=>!o.paid);
+  const paidTakeout = takeoutOrders.filter(o=>o.paid);
+  return `
+  <div class="panel">
+    <div class="home-header">
+      <div>
+        <div class="home-eyebrow label">DORATA · SUCURSAL CENTRO</div>
+        <div class="home-title display">${waiter.homeTab==='mesas' ? 'MAPA DE MESAS' : 'PARA LLEVAR'}</div>
+      </div>
+      <div class="tabs-pill">
+        <button class="tab-btn ${waiter.homeTab==='mesas'?'active':''}" data-hometab="mesas">
+          <svg class="svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${waiter.homeTab==='mesas'?C.cream:C.mute}" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Mesas
+        </button>
+        <button class="tab-btn ${waiter.homeTab==='llevar'?'active':''}" data-hometab="llevar">
+          ${icon('bag', waiter.homeTab==='llevar'?C.cream:C.mute, 13)} Para llevar
+          ${pendingTakeout.length>0 ? `<span class="tab-count">${pendingTakeout.length}</span>`:''}
+        </button>
+      </div>
+    </div>
+    ${waiter.homeTab==='mesas' ? renderTableGrid() : renderTakeoutTab(pendingTakeout, paidTakeout)}
+  </div>`;
+}
+function renderTableGrid(){
+  return `<div class="table-grid">
+    ${tables.map(t=>{
+      const meta = STATUS_META[t.status];
+      const order = orders[t.id]||[];
+      return `<button class="table-card" style="border:1.5px solid ${t.status==='libre'?C.line:meta.bg}" data-table="${t.id}">
+        <div class="table-top">
+          <span class="table-name display">${t.label}</span>
+          <span class="table-seats">${icon('users', C.mute, 11)}${t.seats}</span>
+        </div>
+        <span class="badge label" style="background:${meta.bg};color:${meta.color};align-self:flex-start;font-size:9px;">${meta.label.toUpperCase()}</span>
+        ${order.length>0 ? `<span class="table-total">${money(orderTotal(order))}</span>` : ''}
+        ${t.status==='comiendo' ? `<span class="table-hint">Toca para liberar mesa</span>` : ''}
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+function renderTakeoutTab(pending, paid){
+  return `
+    <div class="takeout-actions">
+      <button class="new-takeout-btn" id="newTakeoutBtn">
+        ${icon('plus', C.cream, 14)}<span style="color:${C.cream};font-weight:800;font-size:12px;">Nueva orden para llevar</span>
+      </button>
+    </div>
+    ${pending.length===0 && paid.length===0 ? `<div class="empty-hint">No hay órdenes para llevar activas</div>` : ''}
+    ${pending.length>0 ? `
+      <div class="section-label label">SIN PAGAR</div>
+      <div class="takeout-grid">
+        ${pending.map(o=>`
+          <button class="takeout-card" style="border:1.5px solid ${C.yolk}" data-takeout="${o.id}">
+            <span style="display:flex;align-items:center;gap:5px;color:${C.mute};font-size:11px;font-weight:700;">${icon('bag',C.mute,11)}${o.items.length} ítems</span>
+            <span class="display" style="font-size:15px;color:${C.charcoal};">${o.name}</span>
+            <span class="badge label" style="background:${C.yolk};color:${C.charcoal};align-self:flex-start;font-size:9px;">SIN PAGAR</span>
+            <span style="font-size:13px;font-weight:800;color:${C.charcoal};">${money(orderTotal(o.items))}</span>
+          </button>`).join('')}
+      </div>` : ''}
+    ${paid.length>0 ? `
+      <div class="section-label muted label">PAGADAS · EN PREPARACIÓN</div>
+      <div class="takeout-grid">
+        ${paid.map(o=>`
+          <div class="takeout-card" style="border:1.5px solid ${C.line};opacity:0.85;">
+            <span style="font-size:11px;font-weight:700;color:${C.mute};">${o.name}</span>
+            <span class="display" style="font-size:19px;color:${C.green};">#${o.orderNumber}</span>
+            <span style="font-size:10px;font-weight:700;color:${C.mute};">${money(orderTotal(o.items))}</span>
+          </div>`).join('')}
+      </div>` : ''}
+  `;
+}
+
+// ---------- WAITER: ORDER BUILD (mesa or para llevar) ----------
+function renderOrderBuild(){
+  const isTakeout = waiter.screen==='llevar';
+  const table = isTakeout ? null : tables.find(t=>t.id===waiter.tableId);
+  const takeout = isTakeout ? takeoutOrders.find(o=>o.id===waiter.takeoutId) : null;
+  const order = isTakeout ? (takeout?.items||[]) : (orders[waiter.tableId]||[]);
+  const unsent = order.filter(i=>!i.sent);
+  const products = PRODUCTS.filter(p=>p.cat===waiter.buildCat);
+  const headerTitle = isTakeout ? `PARA LLEVAR · ${takeout.name.toUpperCase()}` : table.label.toUpperCase();
+  const badge = isTakeout
+    ? `<span class="badge label" style="background:${C.yolk};color:${C.charcoal};font-size:9px;">SIN PAGAR</span>`
+    : `<span class="badge label" style="background:${STATUS_META[table.status].bg};color:${STATUS_META[table.status].color};font-size:9px;">${STATUS_META[table.status].label.toUpperCase()}</span>`;
+
+  return `
+  <div class="panel">
+    <div class="build-header">
+      <button class="round-btn" style="width:34px;height:34px;" id="buildBack">${icon('chevronLeft', C.charcoal, 16)}</button>
+      <span class="display" style="font-size:17px;color:${C.charcoal};">${headerTitle}</span>
+      ${badge}
+    </div>
+    <div class="build-layout">
+      <div class="build-products">
+        <div class="build-cats">
+          ${CATEGORIES.map(c=>`<button class="chip ${c===waiter.buildCat?'active':''}" data-buildcat="${c}">${c}</button>`).join('')}
+        </div>
+        <div class="product-grid">
+          ${products.map(p=>`
+            <button class="prod-btn" data-addprod="${p.id}">
+              <div class="prod-emoji">${p.emoji}</div>
+              <span class="prod-name">${p.name}</span>
+              <span class="prod-price">${money(p.price)}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+      <div class="build-order">
+        <div class="order-list-title label">PEDIDO</div>
+        <div class="order-list">
+          ${order.length===0 ? `<div class="empty-order">Toca un producto para agregarlo</div>` : order.map(item=>{
+            const g = item.addedBy ? GUESTS[item.addedBy] : null;
+            return `<div class="order-row" style="opacity:${item.sent?0.75:1};">
+              ${g ? avatarHtml(g,18) : ''}
+              <div class="order-row-info">
+                <div class="order-row-name">${item.name}</div>
+                <div class="order-row-price">${money(item.price)} c/u</div>
+              </div>
+              <div class="order-qty">
+                <button class="round-btn" style="width:20px;height:20px;" data-qty="-1" data-item="${item.id}">${icon('minus',C.charcoal,10)}</button>
+                <span>${item.qty}</span>
+                <button class="round-btn dark" style="width:20px;height:20px;" data-qty="1" data-item="${item.id}">${icon('plus',C.cream,10)}</button>
+                <button data-removeitem="${item.id}" style="margin-left:2px;">${icon('x',C.mute,13)}</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="order-footer">
+          <div class="order-total-row"><span>Total</span><span>${money(orderTotal(order))}</span></div>
+          ${unsent.length>0 ? `<button class="btn-send" id="sendKitchenBtn">${icon('send',C.cream,13)}<span style="color:${C.cream};font-weight:800;font-size:12px;">Enviar a cocina</span></button>` : ''}
+          <button class="btn-bill" id="goBillBtn" ${order.length===0?'disabled':''}>
+            ${icon('receipt', order.length?C.cream:C.mute, 13)}
+            <span style="color:${order.length?C.cream:C.mute};font-weight:800;font-size:12px;">Cobrar en caja</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- WAITER: BILL ----------
+function renderBillScreen(){
+  const isTakeout = waiter.screen==='llevarCuenta';
+  const table = isTakeout ? null : tables.find(t=>t.id===waiter.tableId);
+  const takeout = isTakeout ? takeoutOrders.find(o=>o.id===waiter.takeoutId) : null;
+  const order = isTakeout ? takeout.items : (orders[waiter.tableId]||[]);
+  const title = isTakeout ? `COBRAR · ${takeout.name.toUpperCase()}` : `CUENTA · ${table.label.toUpperCase()}`;
+  const subtotal = orderTotal(order);
+  const tip = subtotal * (waiter.tipPct/100);
+  const total = subtotal + tip;
+  const payOpts = [{id:'card',icon:'card'},{id:'cash',icon:'cash'},{id:'wallet',icon:'wallet'}];
+  return `
+  <div class="panel">
+    <div class="build-header">
+      <button class="round-btn" style="width:34px;height:34px;" id="billBack">${icon('chevronLeft', C.charcoal, 16)}</button>
+      <span class="display" style="font-size:17px;color:${C.charcoal};">${title}</span>
+    </div>
+    <div class="bill-layout">
+      <div class="bill-items">
+        ${order.map(item=>`<div class="bill-row"><span>${item.qty}× ${item.name}</span><span style="font-weight:700;">${money(lineTotal(item))}</span></div>`).join('')}
+      </div>
+      <div class="bill-side">
+        <div>
+          <div class="label" style="font-size:10px;color:${C.charcoal};margin-bottom:8px;">PROPINA</div>
+          <div class="tip-row">${[0,10,15,20].map(p=>`<button class="chip ${waiter.tipPct===p?'active':''}" data-tip="${p}">${p}%</button>`).join('')}</div>
+          ${!isTakeout ? `
+          <div class="label" style="font-size:10px;color:${C.charcoal};margin-bottom:8px;">DIVIDIR ENTRE</div>
+          <div class="split-row">
+            <button class="round-btn" data-split="-1">${icon('minus',C.charcoal,12)}</button>
+            <span style="font-size:13px;font-weight:800;width:20px;text-align:center;">${waiter.split}</span>
+            <button class="round-btn dark" data-split="1">${icon('plus',C.cream,12)}</button>
+            ${waiter.split>1 ? `<span style="font-size:11px;color:${C.mute};">${money(total/waiter.split)} c/u</span>`:''}
+          </div>` : ''}
+          <div class="label" style="font-size:10px;color:${C.charcoal};margin-bottom:8px;">PAGO</div>
+          <div class="pay-row">
+            ${payOpts.map(o=>`<button class="pay-icon-btn ${waiter.payment===o.id?'active':''}" data-pay="${o.id}">${icon(o.icon, waiter.payment===o.id?C.cream:C.charcoal, 16)}</button>`).join('')}
+          </div>
+        </div>
+        <div>
+          <div class="bill-final-row"><span>Subtotal</span><span>${money(subtotal)}</span></div>
+          <div class="bill-final-row"><span>Propina</span><span>${money(tip)}</span></div>
+          <div class="bill-total-row"><span>Total</span><span>${money(total)}</span></div>
+          <button class="btn-charge" id="chargeBtn"><span style="color:${C.cream};font-weight:800;font-size:12px;">Cobrar ${money(total)}</span></button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- WAITER: table occupied / ticket screens ----------
+function renderOccupiedScreen(){
+  const table = tables.find(t=>t.id===waiter.tableId);
+  const order = orders[waiter.tableId]||[];
+  return `
+  <div class="panel">
+    <div class="center-screen">
+      <div class="check-circle">${icon('check',C.cream,28)}</div>
+      <div>
+        <div class="label" style="font-size:10px;color:${C.mute};">PAGADO · ${table.label.toUpperCase()}</div>
+        <div class="display" style="font-size:26px;color:${C.charcoal};margin-top:2px;">COMIENDO</div>
+        <p style="font-size:13px;color:${C.mute};margin-top:8px;max-width:340px;">Total pagado ${money(orderTotal(order))} · ${elapsedLabel(table.paidAt)}. Libera la mesa cuando los clientes se retiren.</p>
+      </div>
+      <div style="width:100%;max-width:280px;">
+        ${order.map(item=>`<div style="display:flex;justify-content:space-between;font-size:13px;color:${C.ink};padding:3px 0;"><span>${item.qty}× ${item.name}</span><span style="font-weight:700;">${money(lineTotal(item))}</span></div>`).join('')}
+      </div>
+      <button class="btn-dark" style="width:auto;padding:13px 28px;border-radius:14px;background:${C.charcoal};" id="releaseBtn"><span style="color:${C.cream};font-weight:800;font-size:12px;">Liberar mesa</span></button>
+      <button id="occBack" style="font-size:11px;font-weight:800;color:${C.mute};">Volver al mapa</button>
+    </div>
+  </div>`;
+}
+function renderTicketScreen(){
+  return `
+  <div class="panel">
+    <div class="center-screen">
+      <div class="check-circle">${icon('check',C.cream,32)}</div>
+      <div>
+        <div class="label" style="font-size:10px;color:${C.mute};">PAGO CONFIRMADO · NÚMERO DE ORDEN</div>
+        <div class="big-number display">#${waiter.assignedNumber}</div>
+        <p style="font-size:13px;color:${C.mute};margin-top:8px;max-width:340px;">Se llamará este número cuando el pedido esté listo para recoger.</p>
+      </div>
+      <button style="padding:13px 28px;border-radius:14px;background:${C.charcoal};" id="ticketDoneBtn"><span style="color:${C.cream};font-weight:800;font-size:12px;">Volver a Para llevar</span></button>
+    </div>
+  </div>`;
+}
+
+// ---------- render dispatcher ----------
+function renderWaiterApp(){
+  if(waiter.screen==='home') return renderWaiterHome();
+  if(waiter.screen==='mesa' || waiter.screen==='llevar') return renderOrderBuild();
+  if(waiter.screen==='cuenta' || waiter.screen==='llevarCuenta') return renderBillScreen();
+  if(waiter.screen==='ocupada') return renderOccupiedScreen();
+  if(waiter.screen==='ticket') return renderTicketScreen();
+  return '';
+}
+
+// ---------- KITCHEN ----------
+function renderKitchen(){
+  const tickets = [
+    ...tables.filter(t=>t.paidAt).map(t=>({key:`mesa-${t.id}`, type:'mesa', label:t.label, items:orders[t.id]||[], paidAt:t.paidAt})),
+    ...takeoutOrders.filter(o=>o.paid).map(o=>({key:`llevar-${o.id}`, type:'llevar', label:`${o.name} · #${o.orderNumber}`, items:o.items, paidAt:o.paidAt})),
+  ].sort((a,b)=>a.paidAt-b.paidAt);
+  const pending = tickets.filter(t=>!kitchenReady[t.key]);
+  const done = tickets.filter(t=>kitchenReady[t.key]).sort((a,b)=>b.paidAt-a.paidAt);
+
+  return `
+  <div class="panel dark">
+    <div class="kitchen-header">
+      <div class="kitchen-title-block">${icon('chef',C.cream,20)}<span class="kitchen-title display">COCINA</span></div>
+      <span class="kitchen-count">${pending.length} pedido${pending.length!==1?'s':''} en cola</span>
+    </div>
+    <div class="kitchen-body">
+      <div class="kitchen-pending">
+        <div class="kitchen-pending-label label">EN PREPARACIÓN · ORDEN DE PAGO</div>
+        ${pending.length===0 ? `<div class="kitchen-empty">No hay pedidos pendientes</div>` : `
+        <div class="ticket-grid">
+          ${pending.map((t,i)=>`
+            <div class="ticket-card">
+              <div class="ticket-top">
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <span class="ticket-order-badge">${i+1}</span>
+                  ${icon(t.type==='mesa'?'utensils':'bag', C.charcoal, 12)}
+                  <span class="ticket-label display">${t.label.toUpperCase()}</span>
+                </span>
+                <span class="ticket-time">${elapsedLabel(t.paidAt)}</span>
+              </div>
+              <div class="ticket-items">${t.items.map(it=>`<div class="ticket-item">${it.qty}× ${it.name}</div>`).join('')}</div>
+              <button class="btn-ready" data-ready="${t.key}">${icon('check',C.cream,12)}<span style="color:${C.cream};font-weight:800;font-size:11px;">Marcar listo</span></button>
+            </div>`).join('')}
+        </div>`}
+      </div>
+      <div class="kitchen-done">
+        <div class="kitchen-done-label label">LISTOS</div>
+        ${done.length===0 ? `<div style="font-size:11px;color:${C.mute};">Nada listo todavía</div>` : done.map(t=>`
+          <button class="done-item" data-ready="${t.key}">
+            <div class="done-item-top">${icon(t.type==='mesa'?'utensils':'bag', C.cream, 11)}<span class="done-item-label">${t.label}</span></div>
+            <span class="done-item-sub">${t.items.length} ítems · toca para reabrir</span>
+          </button>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- master render + event wiring ----------
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = mode==='mesero' ? renderWaiterApp() : renderKitchen();
+  wireEvents(app);
+}
+
+function wireEvents(app){
+  // home
+  app.querySelectorAll('[data-hometab]').forEach(b=>b.addEventListener('click', ()=>{ waiter.homeTab=b.dataset.hometab; render(); }));
+  app.querySelectorAll('[data-table]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = Number(b.dataset.table);
+    const t = tables.find(x=>x.id===id);
+    waiter.tableId = id;
+    waiter.screen = t.status==='comiendo' ? 'ocupada' : 'mesa';
+    waiter.buildCat = 'Combos';
+    render();
+  }));
+  app.querySelectorAll('[data-takeout]').forEach(b=>b.addEventListener('click', ()=>{
+    waiter.takeoutId = b.dataset.takeout; waiter.screen='llevar'; waiter.buildCat='Combos'; render();
+  }));
+  const newTakeoutBtn = app.querySelector('#newTakeoutBtn');
+  if(newTakeoutBtn) newTakeoutBtn.addEventListener('click', ()=>{
+    document.getElementById('takeoutNameInput').value='';
+    document.getElementById('takeoutOverlay').classList.add('open');
+  });
+
+  // order build
+  const buildBack = app.querySelector('#buildBack'); if(buildBack) buildBack.addEventListener('click', goHome);
+  app.querySelectorAll('[data-buildcat]').forEach(b=>b.addEventListener('click', ()=>{ waiter.buildCat=b.dataset.buildcat; render(); }));
+  app.querySelectorAll('[data-addprod]').forEach(b=>b.addEventListener('click', ()=>{
+    const p = PRODUCTS.find(x=>x.id===b.dataset.addprod);
+    if(waiter.screen==='llevar') addTakeoutItem(waiter.takeoutId, p);
+    else addItem(waiter.tableId, p, 'mesero');
+    render();
+  }));
+  app.querySelectorAll('[data-qty]').forEach(b=>b.addEventListener('click', ()=>{
+    const delta = Number(b.dataset.qty); const itemId = b.dataset.item;
+    if(waiter.screen==='llevar') changeTakeoutQty(waiter.takeoutId, itemId, delta);
+    else changeQty(waiter.tableId, itemId, delta);
+    render();
+  }));
+  app.querySelectorAll('[data-removeitem]').forEach(b=>b.addEventListener('click', ()=>{
+    if(waiter.screen==='llevar') removeTakeoutItem(waiter.takeoutId, b.dataset.removeitem);
+    else removeItem(waiter.tableId, b.dataset.removeitem);
+    render();
+  }));
+  const sendBtn = app.querySelector('#sendKitchenBtn');
+  if(sendBtn) sendBtn.addEventListener('click', ()=>{
+    if(waiter.screen==='llevar') sendTakeoutToKitchen(waiter.takeoutId);
+    else sendToKitchen(waiter.tableId);
+    render();
+  });
+  const goBillBtn = app.querySelector('#goBillBtn');
+  if(goBillBtn) goBillBtn.addEventListener('click', ()=>{
+    waiter.tipPct=10; waiter.split=1; waiter.payment='card';
+    waiter.screen = waiter.screen==='llevar' ? 'llevarCuenta' : 'cuenta';
+    render();
+  });
+
+  // bill
+  const billBack = app.querySelector('#billBack');
+  if(billBack) billBack.addEventListener('click', ()=>{ waiter.screen = waiter.screen==='llevarCuenta' ? 'llevar' : 'mesa'; render(); });
+  app.querySelectorAll('[data-tip]').forEach(b=>b.addEventListener('click', ()=>{ waiter.tipPct=Number(b.dataset.tip); render(); }));
+  app.querySelectorAll('[data-split]').forEach(b=>b.addEventListener('click', ()=>{ waiter.split=Math.max(1, waiter.split+Number(b.dataset.split)); render(); }));
+  app.querySelectorAll('[data-pay]').forEach(b=>b.addEventListener('click', ()=>{ waiter.payment=b.dataset.pay; render(); }));
+  const chargeBtn = app.querySelector('#chargeBtn');
+  if(chargeBtn) chargeBtn.addEventListener('click', ()=>{
+    if(waiter.screen==='llevarCuenta'){
+      const num = chargeTakeout(waiter.takeoutId);
+      waiter.assignedNumber = num;
+      waiter.screen = 'ticket';
+    } else {
+      markTablePaid(waiter.tableId);
+      waiter.screen = 'home';
+    }
+    render();
+  });
+
+  // occupied / ticket
+  const releaseBtn = app.querySelector('#releaseBtn');
+  if(releaseBtn) releaseBtn.addEventListener('click', ()=>{ releaseTable(waiter.tableId); waiter.screen='home'; render(); });
+  const occBack = app.querySelector('#occBack'); if(occBack) occBack.addEventListener('click', goHome);
+  const ticketDoneBtn = app.querySelector('#ticketDoneBtn');
+  if(ticketDoneBtn) ticketDoneBtn.addEventListener('click', ()=>{ waiter.screen='home'; waiter.homeTab='llevar'; render(); });
+
+  // kitchen
+  app.querySelectorAll('[data-ready]').forEach(b=>b.addEventListener('click', ()=>{ toggleKitchenReady(b.dataset.ready); render(); }));
+}
+
+// ---------- new takeout modal ----------
+document.getElementById('takeoutCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('takeoutOverlay').classList.remove('open');
+});
+document.getElementById('takeoutCreateBtn').addEventListener('click', ()=>{
+  const val = document.getElementById('takeoutNameInput').value.trim() || 'Cliente';
+  const id = createTakeout(val);
+  document.getElementById('takeoutOverlay').classList.remove('open');
+  waiter.takeoutId = id; waiter.screen='llevar'; waiter.buildCat='Combos';
+  render();
+});
+document.getElementById('takeoutOverlay').addEventListener('click', e=>{
+  if(e.target.id==='takeoutOverlay') document.getElementById('takeoutOverlay').classList.remove('open');
+});
+
+// ---------- init ----------
+setMode('mesero');
+setInterval(()=>{ if(mode==='cocina') render(); }, 15000);
+</script>
+</body>
+</html>

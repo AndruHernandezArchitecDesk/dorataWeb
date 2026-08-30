@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+dorata-backend/node_modules
+dorata-backend/dist
+dorata-backend/.env
+dorata-frontend/node_modules
+dorata-frontend/dist
+dorata-frontend/.env
