@@ -66,6 +66,17 @@ export async function getTables() {
   return staffRequest("/api/tables?branchId=branch-main");
 }
 
+export async function createTable(label, seats = 4) {
+  return staffRequest("/api/tables", {
+    method: "POST",
+    body: JSON.stringify({ label, seats }),
+  });
+}
+
+export async function deleteTable(id) {
+  return staffRequest(`/api/tables/${id}`, { method: "DELETE" });
+}
+
 export async function getOrder(id) {
   return staffRequest(`/api/orders/${id}`);
 }

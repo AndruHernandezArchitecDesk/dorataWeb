@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { X, Send, CreditCard, CheckCircle2 } from "lucide-react";
-import { getTables, getOrder, sendOrderToKitchen, payOrder, releaseOrder } from "../lib/api";
+import { X, Send, CreditCard, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { getTables, getOrder, createTable, deleteTable, sendOrderToKitchen, payOrder, releaseOrder } from "../lib/api";
 import { money } from "../data/menu";
 
 const STATUS_STYLES = {
@@ -23,6 +23,10 @@ export default function MeseroView({ onBack }) {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = async () => {
     try {
@@ -33,16 +37,48 @@ export default function MeseroView({ onBack }) {
     }
   };
 
+  const addTable = async (e) => {
+    e.preventDefault();
+    const label = newLabel.trim();
+    if (!label) return;
+    setBusy(true);
+    try {
+      await createTable(label);
+      setNewLabel("");
+      setAdding(false);
+      await load();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeTable = async () => {
+    setDeleteBusy(true);
+    try {
+      await deleteTable(selected.id);
+      setSelected(null);
+      setConfirmDelete(false);
+      await load();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
 
   const openTable = async (t) => {
-    if (!t.activeOrder) return;
     setSelected(t);
     setDetail(null);
-    const order = await getOrder(t.activeOrder.id);
-    setDetail(order);
+    if (t.activeOrder) {
+      const order = await getOrder(t.activeOrder.id);
+      setDetail(order);
+    }
   };
 
   const act = async (fn) => {
@@ -62,10 +98,46 @@ export default function MeseroView({ onBack }) {
       <div className="max-w-6xl mx-auto px-5 py-4">
         <div className="flex items-center justify-between mb-4">
           <div className="text-2xl font-display text-charcoal">Mesas</div>
-          <button onClick={onBack} className="text-sm font-bold text-mute underline">
-            Volver al cliente
-          </button>
+          <div className="flex items-center gap-2">
+            {!adding && (
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 bg-flame text-cream rounded-full pl-3 pr-3.5 py-2.5 font-bold text-sm"
+              >
+                <Plus size={16} /> Agregar mesa
+              </button>
+            )}
+            <button onClick={onBack} className="text-sm font-bold text-mute underline">
+              Volver al cliente
+            </button>
+          </div>
         </div>
+
+        {adding && (
+          <form onSubmit={addTable} className="flex items-center gap-2 mb-4">
+            <input
+              autoFocus
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="Ej: Mesa 5"
+              className="rounded-2xl bg-cream border border-line px-4 py-2.5 text-sm text-charcoal outline-none focus:border-flame"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-2xl py-2.5 px-4 bg-charcoal text-cream font-bold text-sm disabled:opacity-60"
+            >
+              Crear
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAdding(false); setNewLabel(""); }}
+              className="rounded-2xl py-2.5 px-3 bg-paper border border-line text-mute font-bold text-sm"
+            >
+              Cancelar
+            </button>
+          </form>
+        )}
 
         {loading ? (
           <div className="text-sm text-mute">Cargando mesas...</div>
@@ -106,8 +178,10 @@ export default function MeseroView({ onBack }) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4">
-              {!detail ? (
+              {selected.activeOrder && !detail ? (
                 <div className="text-sm text-mute">Cargando pedido...</div>
+              ) : !selected.activeOrder ? (
+                <div className="text-sm text-mute">Sin pedido activo.</div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {detail.items.map((i) => (
@@ -151,6 +225,41 @@ export default function MeseroView({ onBack }) {
                 </button>
               </div>
             )}
+
+            {!selected.activeOrder && (
+              <div className="px-5 pb-6 pt-4 border-t border-line">
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-xs font-bold text-mute underline flex items-center justify-center gap-1"
+                >
+                  <Trash2 size={12} /> Eliminar mesa
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && selected && (
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-xs bg-paper rounded-3xl p-5">
+            <div className="text-base font-display text-charcoal mb-2">Eliminar {selected.label}</div>
+            <div className="text-sm text-mute mb-4">Esta acción no se puede deshacer.</div>
+            <div className="flex flex-col gap-2">
+              <button
+                disabled={deleteBusy}
+                onClick={removeTable}
+                className="w-full rounded-2xl py-3 bg-chile text-cream font-extrabold text-sm disabled:opacity-60"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="w-full rounded-2xl py-3 bg-paper border border-line text-ink font-bold text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

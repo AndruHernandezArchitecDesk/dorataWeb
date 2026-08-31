@@ -1,7 +1,65 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { AuthRequest, authMiddleware } from "../../middleware/auth";
 
 const router = Router();
+
+const createTableSchema = z.object({
+  label: z.string().min(1),
+  seats: z.number().int().positive().default(4),
+});
+
+router.post("/", authMiddleware, async (req: AuthRequest, res) => {
+  const parsed = createTableSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Datos inválidos", details: parsed.error.flatten() });
+  }
+
+  const { label, seats } = parsed.data;
+
+  const existing = await prisma.table.findFirst({
+    where: { branchId: req.staff!.branchId, label },
+  });
+  if (existing) {
+    return res.status(409).json({ error: "Ya existe una mesa con esa etiqueta" });
+  }
+
+  const table = await prisma.table.create({
+    data: {
+      branchId: req.staff!.branchId,
+      label,
+      seats,
+      status: "LIBRE",
+    },
+  });
+
+  res.status(201).json(table);
+});
+
+router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
+  const table = await prisma.table.findFirst({
+    where: { id: req.params.id, branchId: req.staff!.branchId },
+    include: {
+      orders: {
+        where: {
+          status: { in: ["ABIERTO", "ENVIADO_COCINA", "PAGADO", "LISTO"] },
+        },
+      },
+    },
+  });
+
+  if (!table) {
+    return res.status(404).json({ error: "Mesa no encontrada" });
+  }
+
+  if (table.orders.length > 0) {
+    return res.status(409).json({ error: "No se puede eliminar una mesa con pedido activo" });
+  }
+
+  await prisma.table.delete({ where: { id: table.id } });
+  res.status(204).send();
+});
 
 router.get("/", async (req, res) => {
   const branchId = req.query.branchId as string | undefined;

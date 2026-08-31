@@ -20,6 +20,19 @@ export default function Header({ cartCount, onOpenCart, staff, onLoginClick, onO
             <Search size={16} className="text-cream" />
           </button>
 
+          <button
+            onClick={onOpenCart}
+            className="flex items-center gap-2 bg-charcoal text-cream rounded-full pl-3.5 pr-4 py-2.5 font-bold text-sm relative"
+          >
+            <ShoppingBag size={16} />
+            <span>Carrito</span>
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-flame text-cream text-[10px] font-black w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
+
           {staff ? (
             <>
               <button
@@ -45,19 +58,6 @@ export default function Header({ cartCount, onOpenCart, staff, onLoginClick, onO
               <span>Staff</span>
             </button>
           )}
-
-          <button
-            onClick={onOpenCart}
-            className="flex items-center gap-2 bg-charcoal text-cream rounded-full pl-3.5 pr-4 py-2.5 font-bold text-sm relative"
-          >
-            <ShoppingBag size={16} />
-            <span>Carrito</span>
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-flame text-cream text-[10px] font-black w-[18px] h-[18px] rounded-full flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </button>
         </div>
       </div>
     </header>
