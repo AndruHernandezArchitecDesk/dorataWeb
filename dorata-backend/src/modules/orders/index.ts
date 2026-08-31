@@ -108,7 +108,7 @@ router.get("/:id", authMiddleware, async (req: AuthRequest, res) => {
 
 router.patch("/:id/items", authMiddleware, async (req: AuthRequest, res) => {
   const { items } = req.body as {
-    items: { cartId?: string; productId?: string; qty?: number }[];
+    items: { cartId?: string; productId?: string; qty?: number; size?: string; extras?: any }[];
   };
 
   const order = await prisma.order.findFirst({
@@ -124,35 +124,36 @@ router.patch("/:id/items", authMiddleware, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "No se puede modificar un pedido cerrado" });
   }
 
-  const updatedItems = [];
-
   for (const patch of items) {
     if (patch.cartId) {
       if (patch.qty && patch.qty <= 0) {
         await prisma.orderItem.delete({ where: { id: patch.cartId } });
-        continue;
+      } else {
+        await prisma.orderItem.update({
+          where: { id: patch.cartId },
+          data: { qty: patch.qty || 1 },
+        });
       }
-      const item = await prisma.orderItem.update({
-        where: { id: patch.cartId },
-        data: { qty: patch.qty || undefined },
-      });
-      updatedItems.push(item);
     } else if (patch.productId) {
-      const item = await prisma.orderItem.create({
+      const product = await prisma.product.findUnique({ where: { id: patch.productId } });
+      if (!product) continue;
+      await prisma.orderItem.create({
         data: {
           orderId: order.id,
-          productId: patch.productId,
-          productName: patch.productId,
-          unitPrice: 0,
+          productId: product.id,
+          productName: product.name,
+          unitPrice: product.price,
           qty: patch.qty || 1,
+          size: patch.size || null,
+          extras: patch.extras || null,
           addedBy: req.staff!.role,
         },
       });
-      updatedItems.push(item);
     }
   }
 
-  const subtotal = updatedItems.reduce((s, i) => s + Number(i.unitPrice) * i.qty, 0);
+  const allItems = await prisma.orderItem.findMany({ where: { orderId: order.id } });
+  const subtotal = allItems.reduce((s, i) => s + Number(i.unitPrice) * i.qty, 0);
   const tax = Number((subtotal * 0.08).toFixed(2));
   const total = Number((subtotal + tax).toFixed(2));
 

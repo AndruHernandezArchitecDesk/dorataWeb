@@ -66,6 +66,10 @@ export async function getTables() {
   return staffRequest("/api/tables?branchId=branch-main");
 }
 
+export async function deleteTable(id) {
+  return staffRequest(`/api/tables/${id}`, { method: "DELETE" });
+}
+
 export async function createTable(label, seats = 4) {
   return staffRequest("/api/tables", {
     method: "POST",
@@ -73,8 +77,42 @@ export async function createTable(label, seats = 4) {
   });
 }
 
-export async function deleteTable(id) {
-  return staffRequest(`/api/tables/${id}`, { method: "DELETE" });
+export async function createOrderForTable(tableId, product) {
+  const body = {
+    items: [
+      {
+        productId: product.id,
+        productName: product.name,
+        unitPrice: Number(product.price),
+        qty: 1,
+        size: null,
+        extras: null,
+      },
+    ],
+    orderType: "COMER_AQUI",
+    tableId,
+  };
+
+  const data = await staffRequest("/api/orders", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  return data;
+}
+
+export async function addOrderItem(orderId, product, qty = 1) {
+  return staffRequest(`/api/orders/${orderId}/items`, {
+    method: "PATCH",
+    body: JSON.stringify({ items: [{ productId: product.id, qty }] }),
+  });
+}
+
+export async function updateOrderItemQty(orderId, cartId, qty) {
+  return staffRequest(`/api/orders/${orderId}/items`, {
+    method: "PATCH",
+    body: JSON.stringify({ items: [{ cartId, qty }] }),
+  });
 }
 
 export async function getOrder(id) {

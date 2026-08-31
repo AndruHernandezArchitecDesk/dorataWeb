@@ -65,7 +65,7 @@ async function main() {
         branchId: branch.id,
         name: s.name,
         pin: hashed,
-        role: s.role,
+        role: s.role as any,
       },
     });
   }
