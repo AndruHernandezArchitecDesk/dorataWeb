@@ -47,12 +47,10 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 
   let { items, orderType, customerName, tableId, paymentMethod, idempotencyKey } = parsed.data;
 
-  if (orderType === OrderType.COMER_AQUI && !tableId && req.staff?.role === "CLIENTE_MESA") {
-    tableId = req.staff.tableId;
-  }
-
-  if (orderType === OrderType.COMER_AQUI && !tableId) {
-    return res.status(400).json({ error: "tableId requerido para comer en el local" });
+  // COMER_AQUI desde cliente ya NO se auto-asigna a mesa; queda en cola para mesero
+  // Solo mesero/admin puede crear con tableId explícito
+  if (orderType === OrderType.COMER_AQUI && !tableId && req.staff?.role !== "CLIENTE_MESA") {
+    // mesero puede crear sin mesa y luego asignar, permitir null
   }
 
   const pm = paymentMethod ? (paymentMethod.toUpperCase() as any) : null;
@@ -264,6 +262,28 @@ router.post("/:id/pay", authMiddleware, async (req: AuthRequest, res) => {
   res.json(updated);
 });
 
+router.post("/:id/preparing", authMiddleware, requireRole("COCINA"), async (req: AuthRequest, res) => {
+  const order = await prisma.order.findFirst({
+    where: { id: req.params.id, branchId: req.staff!.branchId },
+  });
+  if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+  if (order.status !== OrderStatus.ENVIADO_COCINA)
+    return res.status(400).json({ error: "Solo pedidos en cocina pueden pasar a preparando" });
+
+  const updated = await prisma.order.update({
+    where: { id: order.id },
+    data: { status: OrderStatus.PREPARANDO },
+    include: { items: true, table: true },
+  });
+  if (updated.tableId) {
+    await prisma.table.update({ where: { id: updated.tableId }, data: { status: "COCINA" as any } });
+  }
+  getIO().to(`pedido:${updated.id}`).emit("order:updated", updated);
+  getIO().to(`kitchen:${updated.branchId}`).emit("order:updated", updated);
+  getIO().to(`tables:${updated.branchId}`).emit("table:updated", updated);
+  res.json(updated);
+});
+
 router.post("/:id/ready", authMiddleware, requireRole("COCINA"), async (req: AuthRequest, res) => {
   const order = await prisma.order.findFirst({
     where: { id: req.params.id, branchId: req.staff!.branchId },
@@ -272,16 +292,41 @@ router.post("/:id/ready", authMiddleware, requireRole("COCINA"), async (req: Aut
   if (!order) {
     return res.status(404).json({ error: "Pedido no encontrado" });
   }
+  if (![OrderStatus.PREPARANDO, OrderStatus.ENVIADO_COCINA].includes(order.status as any))
+    return res.status(400).json({ error: "Pedido no está en preparación" });
 
   const updated = await prisma.order.update({
     where: { id: order.id },
     data: { status: OrderStatus.LISTO, readyAt: new Date() },
-    include: { items: true },
+    include: { items: true, table: true },
   });
+  if (updated.tableId) {
+    await prisma.table.update({ where: { id: updated.tableId }, data: { status: "COMIENDO" as any } });
+  }
 
   getIO().to(`pedido:${updated.id}`).emit("order:ready", updated);
   getIO().to(`kitchen:${updated.branchId}`).emit("order:ready", updated);
+  getIO().to(`tables:${updated.branchId}`).emit("table:updated", updated);
+  res.json(updated);
+});
 
+router.post("/:id/served", authMiddleware, async (req: AuthRequest, res) => {
+  const order = await prisma.order.findFirst({
+    where: { id: req.params.id, branchId: req.staff!.branchId },
+  });
+  if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+  if (!order.tableId) return res.status(400).json({ error: "Solo mesas tienen Servido" });
+  if (order.status !== OrderStatus.LISTO) return res.status(400).json({ error: "Solo pedidos listos pueden marcarse servidos" });
+
+  const updated = await prisma.order.update({
+    where: { id: order.id },
+    data: { status: OrderStatus.ENTREGADO, releasedAt: new Date() },
+    include: { items: true, table: true },
+  });
+  // Servido NO libera mesa
+  await prisma.table.update({ where: { id: order.tableId }, data: { status: "COMIENDO" as any } });
+  getIO().to(`pedido:${updated.id}`).emit("order:updated", updated);
+  getIO().to(`tables:${updated.branchId}`).emit("table:updated", updated);
   res.json(updated);
 });
 
@@ -307,8 +352,45 @@ router.post("/:id/release", authMiddleware, async (req: AuthRequest, res) => {
       where: { id: order.tableId },
       data: { status: "LIBRE" as any },
     });
+    getIO().to(`tables:${order.branchId}`).emit("table:updated", updated);
   }
 
+  res.json(updated);
+});
+
+router.post("/:id/assign-table", authMiddleware, async (req: AuthRequest, res) => {
+  const parsed = z.object({ tableId: z.string() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "tableId requerido" });
+  const { tableId } = parsed.data;
+
+  const order = await prisma.order.findFirst({
+    where: { id: req.params.id, branchId: req.staff!.branchId },
+  });
+  if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+  if (order.tableId) return res.status(409).json({ error: "El pedido ya está asignado a una mesa" });
+  if (order.orderType === OrderType.PARA_LLEVAR)
+    return res.status(400).json({ error: "Para llevar no se asigna a mesa" });
+  if (order.status !== OrderStatus.ABIERTO)
+    return res.status(400).json({ error: "Solo pedidos ABIERTOS se pueden asignar" });
+
+  const table = await prisma.table.findFirst({
+    where: { id: tableId, branchId: req.staff!.branchId },
+    include: { orders: { where: { status: { in: ["ABIERTO", "ENVIADO_COCINA", "PREPARANDO", "PAGADO", "LISTO"] } } } },
+  });
+  if (!table) return res.status(404).json({ error: "Mesa no encontrada" });
+  if (table.orders.length > 0) return res.status(409).json({ error: "La mesa ya tiene un pedido activo" });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const o = await tx.order.update({
+      where: { id: order.id },
+      data: { tableId },
+      include: { items: true, table: true },
+    });
+    await tx.table.update({ where: { id: tableId }, data: { status: "PIDIENDO" as any } });
+    return o;
+  });
+
+  getIO().to(`pedido:${updated.id}`).emit("order:updated", updated);
   res.json(updated);
 });
 

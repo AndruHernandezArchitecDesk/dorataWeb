@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import CategoryChips from "./components/CategoryChips";
+import PublicidadCarousel from "./components/PublicidadCarousel";
 import ProductGrid from "./components/ProductGrid";
 import ProductModal from "./components/ProductModal";
 import CartDrawer from "./components/CartDrawer";
@@ -151,6 +152,8 @@ export default function App() {
         onOpenStaffView={openStaffView}
         onLogout={handleLogout}
       />
+
+      <PublicidadCarousel />
 
       <CategoryChips categories={CATEGORIES} active={activeCategory} onSelect={setActiveCategory} />
 

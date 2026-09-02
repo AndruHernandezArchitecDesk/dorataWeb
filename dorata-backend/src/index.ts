@@ -13,6 +13,7 @@ import kitchenRoutes from "./modules/kitchen";
 import productsRoutes from "./modules/products";
 import categoriesRoutes from "./modules/categories";
 import mesaRoutes from "./modules/mesa";
+import bannersRoutes from "./modules/banners";
 
 const app = express();
 app.use(cors({ origin: env.CORS_ORIGIN }));
@@ -30,6 +31,7 @@ app.use("/api/orders", ordersRoutes);
 app.use("/api/kitchen", kitchenRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/banners", bannersRoutes);
 
 const server = createServer(app);
 

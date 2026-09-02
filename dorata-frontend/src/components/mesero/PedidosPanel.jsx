@@ -1,14 +1,18 @@
 import { money } from "../../data/menu";
 
 export default function PedidosPanel({ orders, loading, error, onOpenOrder }) {
-  // Solo pedidos de cliente (sin mesa): PARA_LLEVAR y eventualmente otros sin tableId
-  // El backend devuelve todos; aquí filtramos visualmente pero también aceptamos todos si quieren ver
+  // Cola FIFO: más antiguo primero, solo sin mesa (COMER_AQUI sin asignar) y PARA_LLEVAR
+  // Backend devuelve desc; aquí reordenamos asc
+  const sorted = [...orders]
+    .filter((o) => !o.tableId)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
   return (
     <div className="mt-8 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="text-lg font-display text-charcoal">Pedidos cliente</div>
+        <div className="text-lg font-display text-charcoal">Pedidos – cola (más antiguo primero)</div>
         <span className="text-xs bg-paper border border-line rounded-full px-2.5 py-1 text-mute font-bold">
-          {orders.length} activos
+          {sorted.length} en cola
         </span>
       </div>
 
@@ -20,11 +24,11 @@ export default function PedidosPanel({ orders, loading, error, onOpenOrder }) {
 
       {loading ? (
         <div className="text-sm text-mute">Cargando pedidos...</div>
-      ) : orders.length === 0 && !error ? (
-        <div className="text-sm text-mute">No hay pedidos de cliente activos.</div>
+      ) : sorted.length === 0 && !error ? (
+        <div className="text-sm text-mute">No hay pedidos en cola. Los COMER_AQUI aparecerán aquí hasta asignar a mesa.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {orders.map((o) => (
+          {sorted.map((o) => (
             <button
               key={o.id}
               onClick={() => onOpenOrder(o)}

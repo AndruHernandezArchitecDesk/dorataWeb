@@ -12,12 +12,16 @@ import {
   sendOrderToKitchen,
   payOrder,
   releaseOrder,
+  assignOrderToTable,
+  markOrderServed,
+  subscribeToTables,
 } from "../lib/api";
 import ProductAdmin from "./ProductAdmin";
 import MesasPanel from "./mesero/MesasPanel";
 import PedidosPanel from "./mesero/PedidosPanel";
 import MesaDrawer from "./mesero/MesaDrawer";
 import PedidoDrawer from "./mesero/PedidoDrawer";
+import PublicidadAdmin from "./mesero/PublicidadAdmin";
 
 // --- Lógica Mesa (estado/tablas) aislada de pedidos cliente ---
 function useMesas() {
@@ -51,7 +55,7 @@ function usePedidosCliente() {
     setLoading(true);
     try {
       const data = await getOrders();
-      setOrders(data.filter((o) => ["ABIERTO", "ENVIADO_COCINA", "PAGADO", "LISTO"].includes(o.status)));
+      setOrders(data.filter((o) => ["ABIERTO", "ENVIADO_COCINA", "PREPARANDO", "PAGADO", "LISTO"].includes(o.status)));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -82,7 +86,7 @@ export default function MeseroView({ onBack }) {
   const [orderDetail, setOrderDetail] = useState(null);
   const [orderBusy, setOrderBusy] = useState(false);
 
-  const [mode, setMode] = useState("tables");
+  const [mode, setMode] = useState("mesas");
 
   const refreshOrder = async (orderId, forMesa = true) => {
     const order = await getOrder(orderId);
@@ -110,7 +114,34 @@ export default function MeseroView({ onBack }) {
   useEffect(() => {
     mesas.load();
     pedidos.load();
-  }, []);
+    const unsub = subscribeToTables((payload) => {
+      const order = payload?.order || payload;
+      if (!order?.id) {
+        mesas.load();
+        return;
+      }
+      // Actualizar solo componente mesa afectado
+      // Pedidos sin mesa (tableId null) refrescan cola, con mesa actualizan mesa específica
+      if (!order.tableId) {
+        pedidos.load();
+      }
+      // Actualizar array mesas sin recargar todo si es posible
+      mesas.load();
+      // Si el drawer está abierto en esa orden, refrescar detail
+      if (selected?.activeOrder?.id === order.id || detail?.id === order.id) {
+        getOrder(order.id)
+          .then(setDetail)
+          .catch(() => {});
+        if (selected?.id === order.tableId) {
+          // actualizar selected.activeOrder
+          getOrder(order.id)
+            .then((o) => setSelected((s) => (s ? { ...s, activeOrder: o } : s)))
+            .catch(() => {});
+        }
+      }
+    });
+    return () => unsub && unsub();
+  }, [selected?.activeOrder?.id, selected?.id, detail?.id]);
 
   const openTable = async (t) => {
     setSelected(t);
@@ -212,6 +243,37 @@ export default function MeseroView({ onBack }) {
     }
   };
 
+  const handleAssign = async (orderId) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const updated = await assignOrderToTable(orderId, selected.id);
+      setDetail(updated);
+      setSelected({ ...selected, activeOrder: updated });
+      await mesas.load();
+      await pedidos.load();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleServed = async () => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      const updated = await markOrderServed(detail.id);
+      setDetail(updated);
+      // Servido reutiliza ENTREGADO sin liberar mesa: mesa queda COMIENDO
+      await mesas.load();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const actPedido = async (fn, orderId, close = false) => {
     setOrderBusy(true);
     try {
@@ -246,12 +308,20 @@ export default function MeseroView({ onBack }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setMode("tables")}
+              onClick={() => setMode("mesas")}
               className={`px-4 py-2 rounded-full text-sm font-bold border ${
-                mode === "tables" ? "bg-charcoal text-cream border-charcoal" : "bg-paper text-ink border-line"
+                mode === "mesas" ? "bg-charcoal text-cream border-charcoal" : "bg-paper text-ink border-line"
               }`}
             >
-              Mesas
+              Mesas y pedidos
+            </button>
+            <button
+              onClick={() => setMode("publicidad")}
+              className={`px-4 py-2 rounded-full text-sm font-bold border ${
+                mode === "publicidad" ? "bg-charcoal text-cream border-charcoal" : "bg-paper text-ink border-line"
+              }`}
+            >
+              Publicidad
             </button>
             <button
               onClick={() => setMode("products")}
@@ -269,7 +339,9 @@ export default function MeseroView({ onBack }) {
 
         {mode === "products" && <ProductAdmin />}
 
-        {mode === "tables" && (
+        {mode === "publicidad" && <PublicidadAdmin />}
+
+        {mode === "mesas" && (
           <>
             <MesasPanel
               tables={mesas.tables}
@@ -304,13 +376,16 @@ export default function MeseroView({ onBack }) {
         menu={menu}
         menuCat={menuCat}
         busy={busy}
+        pendingOrders={pedidos.orders}
         onClose={closeMesaDrawer}
         onOpenMenu={openMenu}
         onCloseMenu={() => setMenuOpen(false)}
         onSelectMenuCat={setMenuCat}
         onAddProduct={handleAddProduct}
+        onAssignOrder={handleAssign}
         onSendKitchen={() => actMesa(sendOrderToKitchen)}
         onPay={() => actMesa(payOrder, { close: false })}
+        onServed={handleServed}
         onRelease={() => actMesa(releaseOrder)}
         onConfirmDelete={() => setConfirmDelete(true)}
       />

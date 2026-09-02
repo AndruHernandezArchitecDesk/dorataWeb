@@ -73,7 +73,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
       include: {
         orders: {
           where: {
-            status: { in: ["ABIERTO", "ENVIADO_COCINA", "PAGADO", "LISTO"] },
+            status: { in: ["ABIERTO", "ENVIADO_COCINA", "PREPARANDO", "PAGADO", "LISTO", "ENTREGADO"] },
           },
           orderBy: { createdAt: "desc" },
           take: 1,

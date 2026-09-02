@@ -10,6 +10,13 @@ import {
 } from "../lib/api";
 import { money } from "../data/menu";
 
+const FOOD_EMOJIS = [
+  "🍔","🍟","🍕","🌮","🌯","🥙","🥪","🍗","🍖","🌭",
+  "🥓","🥚","🥗","🍝","🍜","🍲","🍛","🍣","🍤","🥟",
+  "🍙","🍚","🥧","🍰","🧁","🍦","🍩","🍪","🍫","🥤",
+  "🧃","🥛","🍺","🍹","🥐","🥖","🧀","🍳","🍿","🥑",
+];
+
 const BLANK = {
   name: "",
   categoryId: "",
@@ -81,10 +88,28 @@ export default function ProductAdmin() {
     }
   };
 
+  const handlePriceChange = (value) => {
+    // Solo números y punto, ej 2.4  - rechaza coma y letras
+    if (value === "") return setForm({ ...form, price: "" });
+    // Permitir dígitos y un solo punto
+    if (!/^\d*\.?\d*$/.test(value)) return;
+    // Máximo 2 decimales después del punto
+    if (value.includes(".")) {
+      const [, dec] = value.split(".");
+      if (dec && dec.length > 2) return;
+    }
+    setForm({ ...form, price: value });
+  };
+
   const save = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.categoryId || !form.price) {
       alert("Completá nombre, categoría y precio");
+      return;
+    }
+    // Validar precio formato punto ej 2.4
+    if (!/^\d+(\.\d{1,2})?$/.test(String(form.price).trim())) {
+      alert("Precio inválido. Usa punto como separador, ej: 2.4");
       return;
     }
     setSaving(true);
@@ -189,26 +214,46 @@ export default function ProductAdmin() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] label-font text-charcoal">Precio</label>
+                <label className="text-[10px] label-font text-charcoal">Precio (usa punto, ej 2.4)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="2.4"
                   value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  onChange={(e) => handlePriceChange(e.target.value)}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v.endsWith(".")) setForm((f) => ({ ...f, price: v.slice(0, -1) }));
+                  }}
                   required
+                  pattern="\d+(\.\d{1,2})?"
                   className="rounded-xl bg-cream border border-line px-3 py-2.5 text-sm text-charcoal outline-none focus:border-flame"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] label-font text-charcoal">Emoji</label>
-                <input
-                  value={form.emoji}
-                  onChange={(e) => setForm({ ...form, emoji: e.target.value })}
-                  placeholder="🍔"
-                  className="rounded-xl bg-cream border border-line px-3 py-2.5 text-sm text-center text-2xl outline-none focus:border-flame"
-                />
+                <div className="rounded-xl bg-cream border border-line p-2">
+                  <div className="grid grid-cols-8 gap-1 max-h-32 overflow-y-auto">
+                    {FOOD_EMOJIS.map((em) => (
+                      <button
+                        key={em}
+                        type="button"
+                        onClick={() => setForm({ ...form, emoji: em })}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg border ${
+                          form.emoji === em ? "bg-yolk border-charcoal" : "bg-paper border-line hover:border-charcoal"
+                        }`}
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                  {form.emoji && (
+                    <div className="mt-2 text-center text-2xl bg-paper border border-line rounded-xl py-1.5">
+                      {form.emoji} <span className="text-xs text-mute ml-1">seleccionado</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-1">

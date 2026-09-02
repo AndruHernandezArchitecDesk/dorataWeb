@@ -47,6 +47,13 @@ export function attachSocket(server: HttpServer) {
       }
     });
 
+    socket.on("subscribe:tables", () => {
+      const staff = socket.data.staff;
+      if (staff) {
+        socket.join(`tables:${staff.branchId}`);
+      }
+    });
+
     socket.on("disconnect", () => {
       // cleanup automático
     });

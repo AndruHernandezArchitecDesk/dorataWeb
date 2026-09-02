@@ -14,6 +14,19 @@ model Branch {
   orders    Order[]
   products  Product[]
   staff     Staff[]
+  banners   Banner[]
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  image     String
+  title     String?
+  link      String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model Table {
@@ -94,6 +107,7 @@ enum OrderType {
 enum OrderStatus {
   ABIERTO
   ENVIADO_COCINA
+  PREPARANDO
   PAGADO
   LISTO
   ENTREGADO

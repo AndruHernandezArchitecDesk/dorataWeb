@@ -1,18 +1,22 @@
 import { Plus } from "lucide-react";
 import { money } from "../../data/menu";
 
-const STATUS_STYLES = {
-  LIBRE: "bg-paper text-mute border-line",
-  PIDIENDO: "bg-yolk text-charcoal border-yolk",
-  COCINA: "bg-flame text-cream border-flame",
-  COMIENDO: "bg-green text-cream border-green",
+const ORDER_STATUS_LABEL = {
+  ABIERTO: "Pidiendo",
+  ENVIADO_COCINA: "En cocina",
+  PREPARANDO: "Preparando",
+  PAGADO: "Pagado",
+  LISTO: "Listo",
+  ENTREGADO: "Servido",
 };
 
-const STATUS_LABEL = {
-  LIBRE: "Libre",
-  PIDIENDO: "Pidiendo",
-  COCINA: "En cocina",
-  COMIENDO: "Comiendo",
+const ORDER_STATUS_STYLE = {
+  ABIERTO: "bg-yolk text-charcoal border-yolk",
+  ENVIADO_COCINA: "bg-flame text-cream border-flame",
+  PREPARANDO: "bg-yolk text-charcoal border-yolk animate-pulse",
+  PAGADO: "bg-flame text-cream border-flame",
+  LISTO: "bg-green text-cream border-green",
+  ENTREGADO: "bg-green text-cream border-green",
 };
 
 export default function MesasPanel({
@@ -80,25 +84,29 @@ export default function MesasPanel({
         <div className="text-sm text-mute">No hay mesas. Agrega una.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {tables.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onOpenTable(t)}
-              className={`rounded-2xl border p-4 text-left flex flex-col gap-2 ${
-                STATUS_STYLES[t.status] || "bg-paper text-ink border-line"
-              }`}
-            >
-              <div className="text-lg font-display">{t.label}</div>
-              <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">
-                {STATUS_LABEL[t.status] || t.status}
-              </div>
-              {t.activeOrder && (
-                <div className="text-xs font-bold">
-                  #{t.activeOrder.orderNumber || "?"} · {money(Number(t.activeOrder.total))}
+          {tables.map((t) => {
+            const orderStatus = t.activeOrder?.status;
+            const label = orderStatus ? ORDER_STATUS_LABEL[orderStatus] || orderStatus : "Libre";
+            const style = orderStatus ? ORDER_STATUS_STYLE[orderStatus] || "bg-paper text-mute border-line" : "bg-paper text-mute border-line";
+            // Solo componente afectado cambia via socket: key incluye status para re-render puntual
+            return (
+              <button
+                key={t.id}
+                onClick={() => onOpenTable(t)}
+                className={`rounded-2xl border p-4 text-left flex flex-col gap-2 ${style}`}
+              >
+                <div className="text-lg font-display">{t.label}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                  {label}
                 </div>
-              )}
-            </button>
-          ))}
+                {t.activeOrder && (
+                  <div className="text-xs font-bold">
+                    #{t.activeOrder.orderNumber || "?"} · {money(Number(t.activeOrder.total))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,5 +1,14 @@
-import { X, Send, CreditCard, CheckCircle2, Trash2 } from "lucide-react";
+import { X, Send, CreditCard, CheckCircle2, Trash2, UtensilsCrossed } from "lucide-react";
 import { money } from "../../data/menu";
+
+const ORDER_LABEL = {
+  ABIERTO: "Pidiendo",
+  ENVIADO_COCINA: "En cocina",
+  PREPARANDO: "Preparando",
+  PAGADO: "Pagado",
+  LISTO: "Listo para servir",
+  ENTREGADO: "Servido",
+};
 
 export default function MesaDrawer({
   selected,
@@ -8,16 +17,22 @@ export default function MesaDrawer({
   menu,
   menuCat,
   busy,
+  pendingOrders = [],
   onClose,
   onOpenMenu,
   onCloseMenu,
   onSelectMenuCat,
   onAddProduct,
+  onAssignOrder,
   onSendKitchen,
   onPay,
+  onServed,
   onRelease,
   onConfirmDelete,
 }) {
+  const assignable = pendingOrders
+    .filter((o) => !o.tableId && o.orderType === "COMER_AQUI" && o.status === "ABIERTO")
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   if (!selected) return null;
 
   return (
@@ -88,10 +103,18 @@ export default function MesaDrawer({
                   <button onClick={onOpenMenu} className="w-full rounded-2xl py-3 bg-charcoal text-cream font-extrabold text-sm">
                     + Agregar productos
                   </button>
-                  {detail ? (
+                    {detail ? (
                     <>
                       {detail.orderNumber && <div className="text-xs font-bold text-mute mb-2">Pedido #{detail.orderNumber}</div>}
-                      <div className="flex flex-col gap-2">
+                      {detail.orderNumber && (
+                        <div className="inline-flex items-center gap-1.5 bg-cream border border-line rounded-full px-3 py-1 w-fit">
+                          <span className="text-[11px] font-bold text-mute uppercase">Estado:</span>
+                          <span className="text-xs font-extrabold text-charcoal">{ORDER_LABEL[detail.status] || detail.status}</span>
+                          {detail.status === "PREPARANDO" && <span className="w-2 h-2 rounded-full bg-yolk animate-pulse" />}
+                          {detail.status === "LISTO" && <span className="w-2 h-2 rounded-full bg-green" />}
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-2 mt-2">
                         {detail.items.map((i) => (
                           <div key={i.id} className="flex items-center justify-between text-sm border-b border-line pb-2">
                             <span className="text-ink">
@@ -108,6 +131,15 @@ export default function MesaDrawer({
                       {detail.status === "PAGADO" && (
                         <div className="text-center text-sm font-extrabold text-green mt-2 py-2 bg-green/10 rounded-xl">Cobrado</div>
                       )}
+                      {detail.status === "PREPARANDO" && (
+                        <div className="text-center text-xs font-bold text-charcoal mt-2 py-2 bg-yolk/20 rounded-xl border border-yolk">Preparando en cocina…</div>
+                      )}
+                      {detail.status === "LISTO" && (
+                        <div className="text-center text-sm font-extrabold text-green mt-2 py-2 bg-green/10 rounded-xl">Listo para servir</div>
+                      )}
+                      {detail.status === "ENTREGADO" && (
+                        <div className="text-center text-sm font-extrabold text-green mt-2 py-2 bg-green/10 rounded-xl">Servido</div>
+                      )}
                     </>
                   ) : (
                     <div className="text-sm text-mute">Cargando pedido...</div>
@@ -115,9 +147,37 @@ export default function MesaDrawer({
                 </>
               ) : (
                 <>
-                  <div className="text-sm text-mute mb-3">Mesa libre. Para iniciar un pedido, agregue productos.</div>
+                  {assignable.length > 0 ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="text-sm font-bold text-charcoal">Asignar pedido de cliente (más antiguo primero)</div>
+                      <div className="text-xs text-mute">El cliente eligió COMER_AQUI sin mesa. Selecciona un pedido para asignarlo a {selected.label}.</div>
+                      <div className="flex flex-col gap-2 max-h-[45vh] overflow-y-auto pr-1">
+                        {assignable.map((o) => (
+                          <button
+                            key={o.id}
+                            disabled={busy}
+                            onClick={() => onAssignOrder(o.id)}
+                            className="text-left bg-cream border border-line rounded-2xl p-3 hover:border-charcoal transition-colors disabled:opacity-60"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-extrabold text-charcoal">#{o.orderNumber} {o.customerName ? `· ${o.customerName}` : ""}</span>
+                              <span className="text-xs text-mute">{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                            <div className="text-xs text-mute mt-1">
+                              {o.items?.length || 0} ítems · {money(Number(o.total))} · {o.orderType}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-mute text-center">— o —</div>
+                    </div>
+                  ) : (
+                    <div className="bg-cream border border-dashed border-line rounded-2xl p-3 text-sm text-mute text-center">
+                      No hay pedidos COMER_AQUI sin mesa en cola.
+                    </div>
+                  )}
                   <button onClick={onOpenMenu} className="w-full rounded-2xl py-3 bg-charcoal text-cream font-extrabold text-sm">
-                    + Agregar productos
+                    + Agregar productos (crear pedido directo en mesa)
                   </button>
                 </>
               )}
@@ -125,14 +185,25 @@ export default function MesaDrawer({
 
             {detail && selected.activeOrder && (
               <div className="px-5 pb-6 pt-4 border-t border-line flex flex-col gap-2">
-                <button
-                  disabled={busy}
-                  onClick={onSendKitchen}
-                  className="w-full rounded-2xl py-3.5 bg-charcoal text-cream font-extrabold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  <Send size={16} /> Enviar a cocina
-                </button>
-                {detail?.status !== "PAGADO" && (
+                {detail.status === "ABIERTO" && (
+                  <button
+                    disabled={busy}
+                    onClick={onSendKitchen}
+                    className="w-full rounded-2xl py-3.5 bg-charcoal text-cream font-extrabold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <Send size={16} /> Enviar a cocina
+                  </button>
+                )}
+                {detail.status === "LISTO" && (
+                  <button
+                    disabled={busy}
+                    onClick={onServed}
+                    className="w-full rounded-2xl py-3.5 bg-green text-cream font-extrabold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <UtensilsCrossed size={16} /> Servido
+                  </button>
+                )}
+                {detail?.status !== "PAGADO" && detail?.status !== "ENTREGADO" && (
                   <button
                     disabled={busy}
                     onClick={onPay}

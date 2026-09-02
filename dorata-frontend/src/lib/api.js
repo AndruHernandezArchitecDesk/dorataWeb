@@ -119,6 +119,13 @@ export async function getOrder(id) {
   return staffRequest(`/api/orders/${id}`);
 }
 
+export async function assignOrderToTable(orderId, tableId) {
+  return staffRequest(`/api/orders/${orderId}/assign-table`, {
+    method: "POST",
+    body: JSON.stringify({ tableId }),
+  });
+}
+
 export async function createOrder({ cart, orderType, paymentMethod, customerName }) {
   const body = {
     items: cart.map((item) => ({
@@ -150,12 +157,40 @@ export async function payOrder(id) {
   return staffRequest(`/api/orders/${id}/pay`, { method: "POST" });
 }
 
+export async function markOrderPreparing(id) {
+  return staffRequest(`/api/orders/${id}/preparing`, { method: "POST" });
+}
+
 export async function markOrderReady(id) {
   return staffRequest(`/api/orders/${id}/ready`, { method: "POST" });
 }
 
+export async function markOrderServed(id) {
+  return staffRequest(`/api/orders/${id}/served`, { method: "POST" });
+}
+
 export async function releaseOrder(id) {
   return staffRequest(`/api/orders/${id}/release`, { method: "POST" });
+}
+
+export function subscribeToTables(onUpdate) {
+  const socket = io(API_URL || undefined, {
+    auth: staffToken ? { token: staffToken } : undefined,
+    transports: ["websocket", "polling"],
+  });
+  socket.on("connect", () => {
+    socket.emit("subscribe:tables");
+  });
+  socket.on("table:updated", (data) => {
+    onUpdate(data);
+  });
+  socket.on("order:updated", (data) => {
+    onUpdate(data);
+  });
+  socket.on("order:ready", (data) => {
+    onUpdate(data);
+  });
+  return () => socket.disconnect();
 }
 
 export async function getKitchenQueue() {
@@ -228,4 +263,23 @@ export async function createCategory(name) {
     method: "POST",
     body: JSON.stringify({ name }),
   });
+}
+
+export async function getBanners(admin = false) {
+  if (admin) return staffRequest("/api/banners/admin");
+  return fetch("/api/banners?branchId=branch-main").then((r) => {
+    if (!r.ok) throw new Error("Error al cargar banners");
+    return r.json();
+  });
+}
+
+export async function createBanner(payload) {
+  return staffRequest("/api/banners", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteBanner(id) {
+  return staffRequest(`/api/banners/${id}`, { method: "DELETE" });
 }
