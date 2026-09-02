@@ -48,6 +48,7 @@ model Product {
   name        String
   description String?
   price       Decimal  @db.Decimal(10, 2)
+  image       String?
   emoji       String?
   hasExtras   Boolean  @default(false)
   hasSize     Boolean  @default(false)
@@ -68,7 +69,7 @@ model Order {
   tableId      String?
   table        Table?        @relation(fields: [tableId], references: [id])
   customerName String?
-  orderType    OrderType     @default(RECOGER)
+  orderType    OrderType     @default(COMER_AQUI)
   status       OrderStatus   @default(ABIERTO)
   orderNumber  Int?
   items        OrderItem[]
@@ -85,9 +86,9 @@ model Order {
 }
 
 enum OrderType {
-  RECOGER
-  DOMICILIO
   COMER_AQUI
+  PARA_LLEVAR
+  DOMICILIO
 }
 
 enum OrderStatus {
@@ -99,9 +100,8 @@ enum OrderStatus {
 }
 
 enum PaymentMethod {
-  TARJETA
   EFECTIVO
-  BILLETERA_DIGITAL
+  TRANSFERENCIA
 }
 
 model OrderItem {

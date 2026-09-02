@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Construction } from "lucide-react";
 import { money, ORDER_TYPES } from "../data/menu";
 
 export default function CartDrawer({
@@ -10,7 +10,7 @@ export default function CartDrawer({
   orderType,
   setOrderType,
   subtotal,
-  tax,
+  fee,
   total,
   onCheckout,
 }) {
@@ -32,18 +32,32 @@ export default function CartDrawer({
 
         <div className="px-5 py-3 border-b border-line">
           <div className="text-[11px] label-font text-mute mb-2">TIPO DE PEDIDO</div>
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {ORDER_TYPES.map((type) => {
-              const active = orderType === type;
+              const active = orderType === type.value;
+              const disabled = !!type.disabled;
               return (
                 <button
-                  key={type}
-                  onClick={() => setOrderType(type)}
-                  className={`px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap transition-colors ${
-                    active ? "bg-charcoal text-cream border-charcoal" : "bg-paper text-ink border-line"
+                  key={type.value}
+                  disabled={disabled}
+                  aria-disabled={disabled}
+                  title={disabled ? "Próximamente" : undefined}
+                  onClick={() => !disabled && setOrderType(type.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap transition-colors inline-flex items-center gap-1.5 ${
+                    disabled
+                      ? "bg-cream text-mute opacity-60 cursor-not-allowed border-dashed"
+                      : active
+                      ? "bg-charcoal text-cream border-charcoal"
+                      : "bg-paper text-ink border-line"
                   }`}
                 >
-                  {type}
+                  {disabled && <Construction size={14} strokeWidth={2} />}
+                  <span>{type.label}</span>
+                  {type.badge && (
+                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-line text-mute font-extrabold">
+                      {type.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -111,10 +125,12 @@ export default function CartDrawer({
                 <span>Subtotal</span>
                 <span className="font-bold text-charcoal">{money(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm text-mute">
-                <span>Impuesto</span>
-                <span className="font-bold text-charcoal">{money(tax)}</span>
-              </div>
+              {fee > 0 && (
+                <div className="flex justify-between text-sm text-mute">
+                  <span>Cargo Para llevar</span>
+                  <span className="font-bold text-charcoal">{money(fee)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-base font-display text-charcoal">
                 <span>Total</span>
                 <span className="text-flame">{money(total)}</span>

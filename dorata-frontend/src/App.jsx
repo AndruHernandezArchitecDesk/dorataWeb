@@ -34,19 +34,20 @@ export default function App() {
   const cart = useCart();
 
   useEffect(() => {
-    const stored = localStorage.getItem("dorata_table_token");
-    if (stored) {
-      setAuthToken(stored);
-      setInitializing(false);
-    } else {
-      getMesaToken(TABLE_ID, BRANCH_ID)
-        .then((token) => {
-          localStorage.setItem("dorata_table_token", token);
-          setAuthToken(token);
-        })
-        .catch((err) => setInitError(err.message))
-        .finally(() => setInitializing(false));
-    }
+    getMesaToken(TABLE_ID, BRANCH_ID)
+      .then((token) => {
+        localStorage.setItem("dorata_table_token", token);
+        setAuthToken(token);
+      })
+      .catch((err) => {
+        const stored = localStorage.getItem("dorata_table_token");
+        if (stored) {
+          setAuthToken(stored);
+        } else {
+          setInitError(err.message);
+        }
+      })
+      .finally(() => setInitializing(false));
 
     const storedStaff = localStorage.getItem("dorata_staff");
     if (storedStaff) {
@@ -69,11 +70,12 @@ export default function App() {
     setIsCheckoutOpen(true);
   };
 
-  const handleConfirmOrder = async (paymentMethod) => {
+  const handleConfirmOrder = async (paymentMethod, customerName) => {
     const { orderId, orderNumber } = await createOrder({
       cart: cart.cart,
       orderType: cart.orderType,
       paymentMethod,
+      customerName: customerName || undefined,
     });
     setOrderNumber(orderNumber);
     setIsCheckoutOpen(false);
@@ -182,7 +184,7 @@ export default function App() {
         orderType={cart.orderType}
         setOrderType={cart.setOrderType}
         subtotal={cart.subtotal}
-        tax={cart.tax}
+        fee={cart.fee}
         total={cart.total}
         onCheckout={handleOpenCheckout}
       />
@@ -191,6 +193,7 @@ export default function App() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         total={cart.total}
+        orderType={cart.orderType}
         onConfirm={handleConfirmOrder}
       />
 

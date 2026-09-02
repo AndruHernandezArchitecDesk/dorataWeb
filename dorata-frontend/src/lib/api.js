@@ -119,7 +119,7 @@ export async function getOrder(id) {
   return staffRequest(`/api/orders/${id}`);
 }
 
-export async function createOrder({ cart, orderType, paymentMethod }) {
+export async function createOrder({ cart, orderType, paymentMethod, customerName }) {
   const body = {
     items: cart.map((item) => ({
       productId: item.product.id,
@@ -129,8 +129,9 @@ export async function createOrder({ cart, orderType, paymentMethod }) {
       size: item.size || null,
       extras: item.extras || null,
     })),
-    orderType,
+    orderType: (orderType || "COMER_AQUI").toUpperCase(),
     paymentMethod,
+    customerName: customerName || undefined,
   };
 
   const data = await clientRequest("/api/orders", {
@@ -161,6 +162,11 @@ export async function getKitchenQueue() {
   return staffRequest("/api/kitchen/queue?branchId=branch-main");
 }
 
+export async function getOrders(status) {
+  const qs = status ? `?status=${status}` : "";
+  return staffRequest(`/api/orders${qs}`);
+}
+
 export function subscribeToOrderStatus(orderId, onUpdate) {
   const socket = io(API_URL || undefined, {
     auth: authToken ? { token: authToken } : undefined,
@@ -189,4 +195,37 @@ export function subscribeToOrderStatus(orderId, onUpdate) {
     socket.emit("unsubscribe:order", orderId);
     socket.disconnect();
   };
+}
+
+export async function getProducts() {
+  return staffRequest("/api/products?branchId=branch-main");
+}
+
+export async function getCategories() {
+  return staffRequest("/api/categories");
+}
+
+export async function createProduct(payload) {
+  return staffRequest("/api/products", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateProduct(id, payload) {
+  return staffRequest(`/api/products/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteProduct(id) {
+  return staffRequest(`/api/products/${id}`, { method: "DELETE" });
+}
+
+export async function createCategory(name) {
+  return staffRequest("/api/categories", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
 }

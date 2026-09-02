@@ -31,7 +31,24 @@ export const SIZES = [
   { id: "lg", name: "Grande", delta: 1.5 },
 ];
 
-export const ORDER_TYPES = ["Recoger", "Domicilio", "Comer aquí"];
+export const ORDER_TYPES = [
+  { value: "COMER_AQUI", label: "Comer aquí" },
+  { value: "PARA_LLEVAR", label: "Para llevar" },
+  { value: "DOMICILIO", label: "Domicilio", disabled: true, badge: "Próximamente" },
+];
+
+export const TAKEAWAY_FEE = 0.25;
+
+export const BANK_INFO = {
+  banco: "Banco del Pichincha",
+  titular: "Dorata Cía. Ltda.",
+  tipoCuenta: "Ahorros",
+  numeroCuenta: "2200123456",
+  ruc: "1791234567001",
+  email: "pagos@dorata.ec",
+  // Valor para QR (ejemplo): formato no transaccional, solo informativo
+  qrPayload: "PICHINCHA|2200123456|1791234567001|Dorata",
+};
 
 export const money = (n) => `$${n.toFixed(2)}`;
 

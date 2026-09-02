@@ -10,6 +10,13 @@ async function main() {
     create: { id: "branch-main", name: "Sucursal Centro" },
   });
 
+  // Reset baseline para que el seed sea idempotuente
+  await prisma.orderItem.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.product.deleteMany({});
+  await prisma.extra.deleteMany({});
+  await prisma.category.deleteMany({});
+
   const categories = await Promise.all(
     ["Combos", "Hamburguesas", "Papas", "Bebidas", "Postres"].map((name) =>
       prisma.category.create({ data: { name } })
@@ -78,7 +85,7 @@ async function main() {
 
   await prisma.orderNumberSequence.upsert({
     where: { branchId: branch.id },
-    update: {},
+    update: { current: 0 },
     create: { branchId: branch.id, current: 0 },
   });
 

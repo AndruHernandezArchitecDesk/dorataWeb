@@ -61,35 +61,40 @@ router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
   res.status(204).send();
 });
 
-router.get("/", async (req, res) => {
-  const branchId = req.query.branchId as string | undefined;
-  if (!branchId) {
-    return res.status(400).json({ error: "branchId requerido" });
-  }
-
-  const tables = await prisma.table.findMany({
-    where: { branchId },
-    include: {
-      orders: {
-        where: {
-          status: { in: ["ABIERTO", "ENVIADO_COCINA", "PAGADO", "LISTO"] },
+router.get("/", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const branchId = (req.query.branchId as string | undefined) || req.staff!.branchId;
+    if (!branchId) {
+      return res.status(400).json({ error: "branchId requerido" });
+    }
+    // Solo mesero/admin/caja/cocina, pero protegido por authMiddleware
+    const tables = await prisma.table.findMany({
+      where: { branchId },
+      include: {
+        orders: {
+          where: {
+            status: { in: ["ABIERTO", "ENVIADO_COCINA", "PAGADO", "LISTO"] },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
-        orderBy: { createdAt: "desc" },
-        take: 1,
       },
-    },
-    orderBy: { label: "asc" },
-  });
+      orderBy: { label: "asc" },
+    });
 
-  res.json(
-    tables.map((t) => ({
-      id: t.id,
-      label: t.label,
-      seats: t.seats,
-      status: t.status,
-      activeOrder: t.orders[0] || null,
-    }))
-  );
+    res.json(
+      tables.map((t) => ({
+        id: t.id,
+        label: t.label,
+        seats: t.seats,
+        status: t.status,
+        activeOrder: t.orders[0] || null,
+      }))
+    );
+  } catch (e) {
+    console.error("GET /api/tables error", e);
+    res.status(500).json({ error: "Error al cargar mesas", details: String(e) });
+  }
 });
 
 export default router;

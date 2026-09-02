@@ -10,6 +10,8 @@ import menuRoutes from "./modules/menu";
 import tablesRoutes from "./modules/tables";
 import ordersRoutes from "./modules/orders";
 import kitchenRoutes from "./modules/kitchen";
+import productsRoutes from "./modules/products";
+import categoriesRoutes from "./modules/categories";
 import mesaRoutes from "./modules/mesa";
 
 const app = express();
@@ -26,6 +28,8 @@ app.use("/api/tables", tablesRoutes);
 app.use("/api/mesa", mesaRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/kitchen", kitchenRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/categories", categoriesRoutes);
 
 const server = createServer(app);
 

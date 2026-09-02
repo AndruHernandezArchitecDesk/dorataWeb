@@ -7,25 +7,37 @@ import { getIO } from "../../lib/socket";
 
 const router = Router();
 
-const createOrderSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        productId: z.string(),
-        productName: z.string(),
-        unitPrice: z.number(),
-        qty: z.number().int().positive(),
-        size: z.string().optional(),
-        extras: z.any().optional(),
-      })
-    )
-    .min(1),
-  orderType: z.nativeEnum(OrderType).default(OrderType.RECOGER),
-  customerName: z.string().optional(),
-  tableId: z.string().optional(),
-  paymentMethod: z.string().optional(),
-  idempotencyKey: z.string().optional(),
-});
+const TAKEAWAY_FEE = 0.25;
+
+const createOrderSchema = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          productId: z.string(),
+          productName: z.string(),
+          unitPrice: z.number(),
+          qty: z.number().int().positive(),
+          size: z.string().nullable().optional(),
+          extras: z.any().nullable().optional(),
+        })
+      )
+      .min(1),
+    orderType: z.nativeEnum(OrderType).default(OrderType.COMER_AQUI),
+    customerName: z.string().optional(),
+    tableId: z.string().optional(),
+    paymentMethod: z.enum(["EFECTIVO", "TRANSFERENCIA"]).optional(),
+    idempotencyKey: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.orderType === OrderType.PARA_LLEVAR && !data.customerName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customerName"],
+        message: "Nombre obligatorio para Para llevar",
+      });
+    }
+  });
 
 router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   const parsed = createOrderSchema.safeParse(req.body);
@@ -33,13 +45,20 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "Datos inválidos", details: parsed.error.flatten() });
   }
 
-  const { items, orderType, customerName, tableId, paymentMethod, idempotencyKey } = parsed.data;
+  let { items, orderType, customerName, tableId, paymentMethod, idempotencyKey } = parsed.data;
+
+  if (orderType === OrderType.COMER_AQUI && !tableId && req.staff?.role === "CLIENTE_MESA") {
+    tableId = req.staff.tableId;
+  }
 
   if (orderType === OrderType.COMER_AQUI && !tableId) {
     return res.status(400).json({ error: "tableId requerido para comer en el local" });
   }
 
   const pm = paymentMethod ? (paymentMethod.toUpperCase() as any) : null;
+  if (pm && !["EFECTIVO", "TRANSFERENCIA"].includes(pm)) {
+    return res.status(400).json({ error: "Método de pago no permitido. Use EFECTIVO o TRANSFERENCIA" });
+  }
 
   if (idempotencyKey) {
     const existing = await prisma.order.findFirst({
@@ -51,49 +70,77 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   }
 
   const subtotal = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
-  const tax = Number((subtotal * 0.08).toFixed(2));
-  const total = Number((subtotal + tax).toFixed(2));
+  const tax = 0;
+  const fee = orderType === OrderType.PARA_LLEVAR ? TAKEAWAY_FEE : 0;
+  const total = Number((subtotal + fee).toFixed(2));
 
-  const order = await prisma.order.create({
-    data: {
-      branchId: req.staff!.branchId,
-      tableId: tableId || null,
-      customerName: customerName || null,
-      orderType,
-      status: OrderStatus.ABIERTO,
-      items: {
-        create: items.map((i) => ({
-          productId: i.productId,
-          productName: i.productName,
-          unitPrice: i.unitPrice,
-          qty: i.qty,
-          size: i.size || null,
-          extras: i.extras || null,
-          addedBy: req.staff!.role,
-        })),
+  const order = await prisma.$transaction(async (tx) => {
+    const seq = await tx.orderNumberSequence.upsert({
+      where: { branchId: req.staff!.branchId },
+      update: { current: { increment: 1 } },
+      create: { branchId: req.staff!.branchId, current: 1 },
+    });
+
+    const created = await tx.order.create({
+      data: {
+        branchId: req.staff!.branchId,
+        tableId: tableId || null,
+        customerName: customerName || null,
+        orderType,
+        status: OrderStatus.ABIERTO,
+        orderNumber: seq.current,
+        items: {
+          create: items.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            unitPrice: i.unitPrice,
+            qty: i.qty,
+            size: i.size || null,
+            extras: i.extras || null,
+            addedBy: req.staff!.role,
+          })),
+        },
+        subtotal,
+        tax,
+        total,
+        paymentMethod: pm,
+        idempotencyKey: idempotencyKey || null,
       },
-      subtotal,
-      tax,
-      total,
-      paymentMethod: pm,
-      idempotencyKey: idempotencyKey || null,
-    },
-    include: { items: true },
+      include: { items: true },
+    });
+
+    if (tableId) {
+      await tx.table.update({
+        where: { id: tableId },
+        data: { status: "PIDIENDO" as any },
+      });
+    }
+
+    return created;
   });
 
   getIO().to(`pedido:${order.id}`).emit("order:updated", order);
 
-  if (tableId) {
-    await prisma.table.update({
-      where: { id: tableId },
-      data: { status: "PIDIENDO" as any },
-    });
-  }
-
   res.status(201).json(order);
 });
 
+router.get("/", authMiddleware, async (req: AuthRequest, res) => {
+  const branchId = req.staff!.branchId;
+  const status = (req.query.status as string | undefined) || undefined;
+  const where: any = { branchId };
+  if (status) {
+    where.status = status;
+  }
+  const orders = await prisma.order.findMany({
+    where,
+    include: { items: true, table: true },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(orders);
+});
+
 router.get("/:id", authMiddleware, async (req: AuthRequest, res) => {
+
   const order = await prisma.order.findFirst({
     where: { id: req.params.id, branchId: req.staff!.branchId },
     include: { items: true, table: true },
@@ -154,8 +201,9 @@ router.patch("/:id/items", authMiddleware, async (req: AuthRequest, res) => {
 
   const allItems = await prisma.orderItem.findMany({ where: { orderId: order.id } });
   const subtotal = allItems.reduce((s, i) => s + Number(i.unitPrice) * i.qty, 0);
-  const tax = Number((subtotal * 0.08).toFixed(2));
-  const total = Number((subtotal + tax).toFixed(2));
+  const tax = 0;
+  const fee = order.orderType === OrderType.PARA_LLEVAR ? TAKEAWAY_FEE : 0;
+  const total = Number((subtotal + fee).toFixed(2));
 
   const updated = await prisma.order.update({
     where: { id: order.id },
@@ -201,30 +249,19 @@ router.post("/:id/pay", authMiddleware, async (req: AuthRequest, res) => {
     return res.status(404).json({ error: "Pedido no encontrado" });
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const seq = await tx.orderNumberSequence.upsert({
-      where: { branchId: order.branchId },
-      update: { current: { increment: 1 } },
-      create: { branchId: order.branchId, current: 1 },
-    });
-
-    const updated = await tx.order.update({
-      where: { id: order.id },
-      data: {
-        status: OrderStatus.PAGADO,
-        orderNumber: seq.current,
-        paidAt: new Date(),
-      },
-      include: { items: true },
-    });
-
-    return updated;
+  const updated = await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: OrderStatus.PAGADO,
+      paidAt: new Date(),
+    },
+    include: { items: true },
   });
 
-  getIO().to(`pedido:${result.id}`).emit("order:paid", result);
-  getIO().to(`kitchen:${result.branchId}`).emit("order:paid", result);
+  getIO().to(`pedido:${updated.id}`).emit("order:paid", updated);
+  getIO().to(`kitchen:${updated.branchId}`).emit("order:paid", updated);
 
-  res.json(result);
+  res.json(updated);
 });
 
 router.post("/:id/ready", authMiddleware, requireRole("COCINA"), async (req: AuthRequest, res) => {

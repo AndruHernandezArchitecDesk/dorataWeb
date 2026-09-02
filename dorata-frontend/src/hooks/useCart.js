@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-
-const TAX_RATE = 0.08;
+import { TAKEAWAY_FEE } from "../data/menu";
 
 export function useCart() {
   const [cart, setCart] = useState([]);
-  const [orderType, setOrderType] = useState("Recoger");
+  const [orderType, setOrderType] = useState("COMER_AQUI");
 
   const addToCart = ({ product, qty, size, extras, unitPrice }) => {
     setCart((prev) => [
@@ -37,12 +36,12 @@ export function useCart() {
 
   const clearCart = () => setCart([]);
 
-  const { subtotal, tax, total, cartCount } = useMemo(() => {
+  const { subtotal, fee, total, cartCount } = useMemo(() => {
     const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
-    const tax = subtotal * TAX_RATE;
+    const fee = orderType === "PARA_LLEVAR" && cart.length > 0 ? TAKEAWAY_FEE : 0;
     const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
-    return { subtotal, tax, total: subtotal + tax, cartCount };
-  }, [cart]);
+    return { subtotal, tax: 0, fee, total: subtotal + fee, cartCount };
+  }, [cart, orderType]);
 
   return {
     cart,
@@ -53,7 +52,8 @@ export function useCart() {
     orderType,
     setOrderType,
     subtotal,
-    tax,
+    tax: 0,
+    fee,
     total,
     cartCount,
   };
