@@ -9,9 +9,8 @@ let io: SocketIOServer | null = null;
 export function attachSocket(server: HttpServer) {
   io = new SocketIOServer(server, {
     cors: {
-      origin: true,
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      origin: "*",
+      methods: ["GET", "POST"],
     },
   });
 
