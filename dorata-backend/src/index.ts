@@ -18,15 +18,7 @@ import bannersRoutes from "./modules/banners/index.js";
 const app = express();
 app.use(
   cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      const allowed =
-        origin.endsWith(".vercel.app") ||
-        origin.includes("localhost") ||
-        origin === env.CORS_ORIGIN ||
-        env.CORS_ORIGIN === "*";
-      cb(null, allowed);
-    },
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

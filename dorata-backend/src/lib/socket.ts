@@ -9,18 +9,9 @@ let io: SocketIOServer | null = null;
 export function attachSocket(server: HttpServer) {
   io = new SocketIOServer(server, {
     cors: {
-      origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        const allowed =
-          origin.endsWith(".vercel.app") ||
-          origin.includes("localhost") ||
-          origin === env.CORS_ORIGIN ||
-          env.CORS_ORIGIN === "*";
-        cb(null, allowed);
-      },
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      origin: true,
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     },
   });
 
