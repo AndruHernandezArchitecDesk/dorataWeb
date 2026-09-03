@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "bash start.sh",
     "dev:backend": "cd dorata-backend && npm run dev",
-    "dev:frontend": "cd dorata-frontend && npm run dev"
+    "dev:frontend": "cd dorata-frontend && npm run dev",
+    "prisma:generate": "npm --prefix dorata-backend run prisma:generate",
+    "build": "npm --prefix dorata-backend run build"
   }
 }
