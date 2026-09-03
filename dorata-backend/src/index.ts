@@ -19,6 +19,16 @@ const app = express();
 app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.json({
+    name: "Dorata API",
+    status: "ok",
+    health: "/health",
+    docs: ["/api/menu?branchId=branch-main", "/api/banners?branchId=branch-main"],
+    frontend: "Despliega dorata-frontend en Vercel y pon VITE_API_URL a esta URL",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
