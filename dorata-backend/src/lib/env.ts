@@ -4,7 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().default(4000),
-  CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  CORS_ORIGIN: z.string().default("*"),
 });
 
 export const env = envSchema.parse({
