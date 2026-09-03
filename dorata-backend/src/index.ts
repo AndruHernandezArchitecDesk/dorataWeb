@@ -16,7 +16,22 @@ import mesaRoutes from "./modules/mesa/index.js";
 import bannersRoutes from "./modules/banners/index.js";
 
 const app = express();
-app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const allowed =
+        origin.endsWith(".vercel.app") ||
+        origin.includes("localhost") ||
+        origin === env.CORS_ORIGIN ||
+        env.CORS_ORIGIN === "*";
+      cb(null, allowed);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
 
 app.get("/", (req, res) => {
