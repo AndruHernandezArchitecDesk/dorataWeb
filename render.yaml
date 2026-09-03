@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: npm --prefix dorata-backend install && npm --prefix dorata-backend run prisma:generate && npm --prefix dorata-backend run build
-    startCommand: node dorata-backend/dist/index.js
+    startCommand: cd dorata-backend && npx tsx src/index.ts
     envVars:
       - key: NODE_VERSION
         value: 22.23.2
