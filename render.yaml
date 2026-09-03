@@ -3,7 +3,7 @@ services:
     name: dorata-backend
     env: node
     plan: free
-    buildCommand: npm --prefix dorata-backend install && npm --prefix dorata-backend run prisma:generate && npx --prefix dorata-backend prisma migrate deploy && npm --prefix dorata-backend run build && npm --prefix dorata-backend run seed || true
+    buildCommand: cd dorata-backend && npm install && npx prisma generate && npx prisma migrate deploy && npm run build && npm run seed || true
     startCommand: cd dorata-backend && node dist/index.js
     envVars:
       - key: NODE_VERSION
