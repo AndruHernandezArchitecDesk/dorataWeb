@@ -3,9 +3,8 @@ services:
     name: dorata-backend
     env: node
     plan: free
-    rootDir: dorata-backend
-    buildCommand: npm install && npm run prisma:generate && npm run build
-    startCommand: node dist/index.js
+    buildCommand: if [ -d dorata-backend ]; then npm --prefix dorata-backend install && npm --prefix dorata-backend run prisma:generate && npm --prefix dorata-backend run build; else npm install && npm run prisma:generate && npm run build; fi
+    startCommand: if [ -f dorata-backend/dist/index.js ]; then node dorata-backend/dist/index.js; else node dist/index.js; fi
     envVars:
       - key: NODE_VERSION
         value: 22.23.2
