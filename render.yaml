@@ -7,6 +7,8 @@ services:
     buildCommand: npm install && npm run prisma:generate && npm run build
     startCommand: node dist/index.js
     envVars:
+      - key: NODE_VERSION
+        value: 22.23.2
       - key: NODE_ENV
         value: production
       - key: PORT
