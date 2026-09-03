@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../../lib/prisma";
-import { AuthRequest, authMiddleware, requireRole } from "../../middleware/auth";
+import { prisma } from "../../lib/prisma.js";
+import { AuthRequest, authMiddleware, requireRole } from "../../middleware/auth.js";
 import { OrderStatus, OrderType } from "@prisma/client";
-import { getIO } from "../../lib/socket";
+import { getIO } from "../../lib/socket.js";
 
 const router = Router();
 

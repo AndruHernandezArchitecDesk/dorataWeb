@@ -1,8 +1,8 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { prisma } from "../../lib/prisma";
-import { env } from "../../lib/env";
+import { prisma } from "../../lib/prisma.js";
+import { env } from "../../lib/env.js";
 
 const router = Router();
 

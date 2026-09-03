@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../lib/env";
+import { env } from "../lib/env.js";
 
 export interface AuthRequest extends Request {
   staff?: {

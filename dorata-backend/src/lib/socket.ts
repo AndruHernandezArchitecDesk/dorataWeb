@@ -1,8 +1,8 @@
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
-import { env } from "../lib/env";
-import { prisma } from "../lib/prisma";
+import { env } from "../lib/env.js";
+import { prisma } from "../lib/prisma.js";
 
 let io: SocketIOServer | null = null;
 

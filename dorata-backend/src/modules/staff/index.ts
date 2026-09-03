@@ -2,8 +2,8 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { prisma } from "../../lib/prisma";
-import { env } from "../../lib/env";
+import { prisma } from "../../lib/prisma.js";
+import { env } from "../../lib/env.js";
 import { StaffRole } from "@prisma/client";
 
 const router = Router();
