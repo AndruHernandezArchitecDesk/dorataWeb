@@ -19,15 +19,24 @@ export default function PublicidadCarousel() {
     };
   }, []);
 
+  const displayBanners =
+    banners.length > 0
+      ? banners
+      : [
+          {
+            id: "fallback",
+            image: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1200&h=400&fit=crop",
+            title: "¡Bienvenido a Dorata! 🔥",
+          },
+        ];
+
   useEffect(() => {
-    if (banners.length <= 1 || paused) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % banners.length), 3500);
+    if (displayBanners.length <= 1 || paused) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % displayBanners.length), 3500);
     return () => clearInterval(t);
-  }, [banners.length, paused]);
+  }, [displayBanners.length, paused]);
 
-  if (banners.length === 0) return null;
-
-  const go = (d) => setIdx((i) => (i + d + banners.length) % banners.length);
+  const go = (d) => setIdx((i) => (i + d + displayBanners.length) % displayBanners.length);
 
   return (
     <div
@@ -36,7 +45,7 @@ export default function PublicidadCarousel() {
       onMouseLeave={() => setPaused(false)}
     >
       <div className="relative overflow-hidden rounded-3xl bg-paper border border-line aspect-[21/9] md:aspect-[3/1]">
-        {banners.map((b, i) => (
+        {displayBanners.map((b, i) => (
           <div
             key={b.id}
             className={`absolute inset-0 transition-opacity duration-500 ${i === idx ? "opacity-100" : "opacity-0"}`}
@@ -56,7 +65,7 @@ export default function PublicidadCarousel() {
           </div>
         ))}
 
-        {banners.length > 1 && (
+        {displayBanners.length > 1 && (
           <>
             <button
               onClick={() => go(-1)}
@@ -71,7 +80,7 @@ export default function PublicidadCarousel() {
               <ChevronRight size={16} />
             </button>
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {banners.map((_, i) => (
+              {displayBanners.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setIdx(i)}
