@@ -12,14 +12,14 @@ import StaffLoginModal from "./components/StaffLoginModal";
 import MeseroView from "./components/MeseroView";
 import CocinaView from "./components/CocinaView";
 import { useCart } from "./hooks/useCart";
-import { setAuthToken, getMesaToken, setStaffToken, createOrder } from "./lib/api";
-import { CATEGORIES, PRODUCTS } from "./data/menu";
+import { setAuthToken, getMesaToken, setStaffToken, createOrder, getMenu } from "./lib/api";
+import { CATEGORIES as FALLBACK_CATEGORIES, PRODUCTS as FALLBACK_PRODUCTS } from "./data/menu";
 
 const BRANCH_ID = "branch-main";
 const TABLE_ID = "table-1";
 
 export default function App() {
-  const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
+  const [activeCategory, setActiveCategory] = useState(FALLBACK_CATEGORIES[0]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -31,8 +31,13 @@ export default function App() {
   const [staff, setStaff] = useState(null);
   const [staffView, setStaffView] = useState(null); // "mesero" | "cocina"
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [remoteCategories, setRemoteCategories] = useState(null);
+  const [remoteProducts, setRemoteProducts] = useState(null);
 
   const cart = useCart();
+
+  const CATEGORIES = remoteCategories || FALLBACK_CATEGORIES;
+  const PRODUCTS = remoteProducts || FALLBACK_PRODUCTS;
 
   useEffect(() => {
     getMesaToken(TABLE_ID, BRANCH_ID)
@@ -61,6 +66,50 @@ export default function App() {
       }
     }
   }, []);
+
+  // Cargar menú dinámico desde backend (productos y categorías creados por mesero)
+  useEffect(() => {
+    if (initializing) return;
+    let interval;
+    const loadMenu = () =>
+      getMenu()
+        .then((cats) => {
+          if (!Array.isArray(cats) || cats.length === 0) return;
+          const catNames = cats.map((c) => c.name);
+          const prods = cats.flatMap((c) =>
+            (c.products || []).map((p) => ({
+              id: p.id,
+              cat: c.name,
+              name: p.name,
+              price: Number(p.price),
+              emoji: p.emoji || "🍽️",
+              tag: p.tag || null,
+              desc: p.description || "",
+              hasExtras: !!p.hasExtras,
+              hasSize: !!p.hasSize,
+              image: p.image || null,
+              active: p.active,
+              categoryId: p.categoryId,
+            }))
+          );
+          if (catNames.length) {
+            setRemoteCategories(catNames);
+            setActiveCategory((prev) => (catNames.includes(prev) ? prev : catNames[0]));
+          }
+          if (prods.length) setRemoteProducts(prods);
+        })
+        .catch(() => {
+          // fallback a menú estático
+        });
+    loadMenu();
+    interval = setInterval(loadMenu, 15000);
+    const onFocus = () => loadMenu();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [initializing]);
 
   const filteredProducts = activeCategory
     ? PRODUCTS.filter((p) => p.cat === activeCategory)

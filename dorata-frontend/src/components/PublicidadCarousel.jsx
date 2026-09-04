@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getBanners } from "../lib/api";
 
 export default function PublicidadCarousel() {
   const [banners, setBanners] = useState([]);
@@ -7,10 +8,15 @@ export default function PublicidadCarousel() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    fetch("/api/banners?branchId=branch-main")
-      .then((r) => r.json())
-      .then((d) => Array.isArray(d) && setBanners(d))
-      .catch(() => {});
+    const load = () => getBanners(false).then((d) => Array.isArray(d) && setBanners(d)).catch(() => {});
+    load();
+    const id = setInterval(load, 15000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   useEffect(() => {

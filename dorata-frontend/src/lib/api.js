@@ -267,7 +267,7 @@ export async function createCategory(name) {
 
 export async function getBanners(admin = false) {
   if (admin) return staffRequest("/api/banners/admin");
-  return fetch("/api/banners?branchId=branch-main").then((r) => {
+  return fetch(`${API_URL}/api/banners?branchId=branch-main`).then((r) => {
     if (!r.ok) throw new Error("Error al cargar banners");
     return r.json();
   });
