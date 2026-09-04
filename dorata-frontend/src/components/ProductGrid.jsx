@@ -9,8 +9,16 @@ export default function ProductGrid({ products, onSelect }) {
           onClick={() => onSelect(p)}
           className="text-left bg-paper border border-line rounded-2xl p-3 flex flex-col gap-2.5 transition-transform hover:-translate-y-0.5 hover:shadow-md"
         >
-          <div className="w-full aspect-square rounded-xl bg-cream flex items-center justify-center text-4xl relative">
-            {p.emoji}
+          <div className="w-full aspect-square rounded-xl bg-cream flex items-center justify-center text-4xl relative overflow-hidden">
+            <span className="text-4xl">{p.emoji}</span>
+            {p.image && (
+              <img
+                src={p.image}
+                alt={p.name}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => (e.target.style.display = "none")}
+              />
+            )}
             {p.tag && (
               <span
                 className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full text-[9px] label-font ${

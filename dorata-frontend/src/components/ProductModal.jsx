@@ -31,8 +31,16 @@ export default function ProductModal({ product, onClose, onAdd }) {
         </div>
 
         <div className="px-5 pb-4">
-          <div className="w-full aspect-[8/5] sm:aspect-square rounded-3xl bg-cream flex items-center justify-center text-6xl sm:text-7xl mb-4">
-            {product.emoji}
+          <div className="w-full aspect-[8/5] sm:aspect-square rounded-3xl bg-cream flex items-center justify-center text-6xl sm:text-7xl mb-4 overflow-hidden relative">
+            <span className="text-6xl sm:text-7xl">{product.emoji}</span>
+            {product.image && (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => (e.target.style.display = "none")}
+              />
+            )}
           </div>
           <div className="text-2xl font-display text-charcoal">{product.name}</div>
           <p className="text-sm text-mute mt-1.5 leading-relaxed">{product.desc}</p>
